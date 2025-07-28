@@ -4,7 +4,12 @@ import { Command } from 'commander';
  * Creates the 'add' command for adding new transactions.
  * @returns {Command} The Commander command object.
  */
-export function createAddCommand(): Command {
+/**
+ * Creates the 'add' command for adding new transactions.
+ * @param {object} config - The configuration object.
+ * @returns {Command} The Commander command object.
+ */
+export function createAddCommand(config: object): Command {
   const addCommand = new Command();
 
   addCommand

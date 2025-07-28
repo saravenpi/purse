@@ -8,7 +8,7 @@ const program = new Command();
 
 program
   .name('purse')
-  .option('-c, --config <path>', 'Path to the configuration file (default: ~/.purse.yml)');
+  .option('-c, --config <path>', 'Path to the configuration file (default: ~/.purse.yml)')
   .description('A simple CLI tool to track your finances.')
   .version('0.0.1')
   .usage('[command] [options]');
@@ -20,7 +20,10 @@ program.on('--help', () => {
   console.log('  $ purse list');
 });
 
-getAllCommands().forEach(command => program.addCommand(command));
+const options = program.opts();
+const config = loadConfig(options.config);
+
+getAllCommands(config).forEach(command => program.addCommand(command));
 
 program.parse(process.argv);
 

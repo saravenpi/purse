@@ -5,7 +5,12 @@ import inquirer from 'inquirer';
  * Creates the 'interactive' command for an interactive CLI interface.
  * @returns {Command} The Commander command object.
  */
-export function createInteractiveCommand(): Command {
+/**
+ * Creates the 'interactive' command for an interactive CLI interface.
+ * @param {object} config - The configuration object.
+ * @returns {Command} The Commander command object.
+ */
+export function createInteractiveCommand(config: object): Command {
   const interactiveCommand = new Command();
 
   interactiveCommand

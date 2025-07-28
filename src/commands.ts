@@ -7,10 +7,10 @@ import { createInteractiveCommand } from './commands/interactive';
  * Returns an array of all commands for the purse CLI.
  * @returns {Command[]} An array of Commander command objects.
  */
-export function getAllCommands(): Command[] {
+export function getAllCommands(config: object): Command {
   return [
-    createAddCommand(),
-    createListCommand(),
-    createInteractiveCommand()
+    createAddCommand(config),
+    createListCommand(config),
+    createInteractiveCommand(config)
   ];
 }

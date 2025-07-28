@@ -60,7 +60,12 @@ purse interactive
 purse -i
 ```
 
-Within the interactive mode, you can now also manage categories.
+The interactive mode now provides consolidated options for managing your finances:
+
+*   **📝 Manage Transactions**: Add, list, edit, or delete individual transactions.
+*   **💰 Manage Balance**: View your current balance, set a new balance, or update it with income/expenses.
+*   **📂 Manage Categories**: Add, edit, or delete transaction categories.
+
 
 ### Category Management
 

@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 
 import { Command } from 'commander';
-
-import { Command } from 'commander';
 import { getAllCommands } from './src/commands';
+import { loadConfig } from './src/config';
 
 const program = new Command();
 
 program
   .name('purse')
+  .option('-c, --config <path>', 'Path to the configuration file (default: ~/.purse.yml)');
   .description('A simple CLI tool to track your finances.')
   .version('0.0.1')
   .usage('[command] [options]');

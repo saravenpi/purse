@@ -45,3 +45,20 @@ To build the `purse` binary:
 ```bash
 bun run build
 ```
+
+### Configuration
+
+The `purse` CLI can load configuration from a YAML file. By default, it looks for a file named `.purse.yml` in your home directory (`~/.purse.yml`).
+
+You can specify a custom configuration file path using the `-c` or `--config` flag:
+
+```bash
+purse --config /path/to/your/custom/config.yml <command>
+```
+
+Example `~/.purse.yml`:
+
+```yaml
+database:
+  path: ~/.purse_data.json
+```

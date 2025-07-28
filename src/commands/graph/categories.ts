@@ -72,7 +72,6 @@ export function createGraphCategoriesCommand(): Command {
         console.log(`  Income: ${chalk.green(`${currencySymbol}${stats.income.toFixed(2)}`)}`);
         console.log(`  Expenses: ${chalk.red(`${currencySymbol}${stats.expenses.toFixed(2)}`)}`);
         console.log(`  Average: ${formatAmount(stats.total / stats.count)}`);
-        console.log('');
       });
 
       const totalTransactions = transactions.length;

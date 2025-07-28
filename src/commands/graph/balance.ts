@@ -56,8 +56,8 @@ export function createGraphBalanceCommand(): Command {
           format: (x: number) => {
             const formatted = x < 0 
               ? `-${currencySymbol}${Math.abs(x).toFixed(2)}`
-              : `${currencySymbol}${x.toFixed(2)}`;
-            return formatted.padStart(maxLength);
+              : ` ${currencySymbol}${x.toFixed(2)}`;
+            return formatted.padStart(maxLength + 1);
           },
         })
       );

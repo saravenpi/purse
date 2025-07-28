@@ -9,7 +9,7 @@ const program = new Command();
 program
   .name('purse')
   .description('A simple CLI tool to track your finances.')
-  .version('0.0.6')
+  .version('0.0.7')
   .usage('[command] [options]')
   .option(
     '-c, --config <path>',

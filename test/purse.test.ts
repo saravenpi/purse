@@ -1,7 +1,7 @@
 import { expect, test, describe, beforeAll, afterAll, beforeEach } from "bun:test";
 import * as fs from 'fs';
 import * as path from 'path';
-import { addTransaction, getTransactions, clearTransactions } from '../src/data';
+import { addTransaction, getTransactions, clearTransactions, deleteTransaction, editTransaction } from '../src/data';
 import { loadConfig, Config } from '../src/config';
 import { handleAddAction } from '../src/commands/add'; // Import the extracted action
 
@@ -177,5 +177,46 @@ describe('Purse Core Logic', () => {
     expect(data.transactions[1].amount).toBe(50);
     expect(data.transactions[1].description).toBe('Income Adjustment');
     expect(data.transactions[1].category).toBe('Salary');
+  });
+
+  test('should delete a transaction', () => {
+    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    addTransaction(config.database!.path!, 100, 'To be deleted');
+    let data = JSON.parse(fs.readFileSync(config.database!.path!, 'utf8'));
+    const transactionId = data.transactions[0].id;
+
+    deleteTransaction(config.database!.path!, transactionId);
+    expect(consoleOutput).toContain(`Transaction with ID ${transactionId} deleted successfully.`);
+
+    data = JSON.parse(fs.readFileSync(config.database!.path!, 'utf8'));
+    expect(data.transactions).toHaveLength(0);
+  });
+
+  test('should not delete a non-existent transaction', () => {
+    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    deleteTransaction(config.database!.path!, 'non-existent-id');
+    expect(consoleOutput).toContain('Transaction with ID non-existent-id not found.');
+  });
+
+  test('should edit a transaction', () => {
+    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    addTransaction(config.database!.path!, 100, 'Original Description', 'Original Category');
+    let data = JSON.parse(fs.readFileSync(config.database!.path!, 'utf8'));
+    const transactionId = data.transactions[0].id;
+
+    editTransaction(config.database!.path!, transactionId, { amount: 150, description: 'Edited Description', category: 'Edited Category' });
+    expect(consoleOutput).toContain(`Transaction with ID ${transactionId} updated successfully.`);
+
+    data = JSON.parse(fs.readFileSync(config.database!.path!, 'utf8'));
+    expect(data.transactions).toHaveLength(1);
+    expect(data.transactions[0].amount).toBe(150);
+    expect(data.transactions[0].description).toBe('Edited Description');
+    expect(data.transactions[0].category).toBe('Edited Category');
+  });
+
+  test('should not edit a non-existent transaction', () => {
+    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    editTransaction(config.database!.path!, 'non-existent-id', { amount: 100 });
+    expect(consoleOutput).toContain('Transaction with ID non-existent-id not found.');
   });
 });

@@ -26,6 +26,18 @@ To check your current balance:
 purse balance
 ```
 
+To delete a transaction:
+
+```bash
+purse delete <transaction-id>
+```
+
+To edit a transaction:
+
+```bash
+purse edit <transaction-id> --amount 15.00 --description "New Description" --category "New Category"
+```
+
 To set a new balance (clears all existing transactions):
 
 ```bash

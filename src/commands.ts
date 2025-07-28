@@ -5,6 +5,8 @@ import { createInteractiveCommand } from './commands/interactive';
 import { createBalanceCommand } from './commands/balance';
 import { createSetBalanceCommand } from './commands/set-balance';
 import { createUpdateBalanceCommand } from './commands/update-balance';
+import { createDeleteCommand } from './commands/delete';
+import { createEditCommand } from './commands/edit';
 
 /**
  * Returns an array of all commands for the purse CLI.
@@ -17,6 +19,8 @@ export function getAllCommands(): Command[] {
     createInteractiveCommand(),
     createBalanceCommand(),
     createSetBalanceCommand(),
-    createUpdateBalanceCommand()
+    createUpdateBalanceCommand(),
+    createDeleteCommand(),
+    createEditCommand()
   ];
 }

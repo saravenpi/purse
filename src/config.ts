@@ -7,6 +7,13 @@ export interface CategoryBudget {
   monthlyBudget: number;
 }
 
+export interface SavingsGoal {
+  name: string;
+  target: number;
+  priority: 'low' | 'medium' | 'high';
+  deadline?: string;
+}
+
 export interface Config {
   database?: {
     path?: string;
@@ -20,12 +27,13 @@ export interface Config {
     cycleStartDay?: number;
     categoryBudgets?: CategoryBudget[];
   };
+  savings?: {
+    goals?: SavingsGoal[];
+  };
 }
 
 /**
  * Loads the configuration from a YAML file.
- * @param {string} [configPath] - The path to the configuration file. Defaults to ~/.purse.yml.
- * @returns {{config: Config, filePath: string}} The loaded configuration and the file path.
  */
 export function loadConfig(configPath?: string): {
   config: Config;
@@ -49,7 +57,7 @@ export function loadConfig(configPath?: string): {
     console.log(
       `Config file not found at ${finalConfigPath}. Creating a new one.`
     );
-    const newConfig: Config = { categories: [] }; // Initialize with empty categories
+    const newConfig: Config = { categories: [] };
     saveConfig(newConfig, finalConfigPath);
     return { config: newConfig, filePath: finalConfigPath };
   }
@@ -57,8 +65,6 @@ export function loadConfig(configPath?: string): {
 
 /**
  * Saves the configuration to a YAML file.
- * @param {Config} config - The configuration object to save.
- * @param {string} filePath - The path to the configuration file.
  */
 export function saveConfig(config: Config, filePath: string): void {
   try {
@@ -75,8 +81,6 @@ export function saveConfig(config: Config, filePath: string): void {
 
 /**
  * Gets the current budget cycle start date based on the configured cycle day.
- * @param {number} cycleStartDay - The day of the month when the cycle starts (default: 1).
- * @returns {Date} The start date of the current budget cycle.
  */
 export function getCurrentBudgetCycleStart(cycleStartDay: number = 1): Date {
   const today = new Date();
@@ -93,8 +97,6 @@ export function getCurrentBudgetCycleStart(cycleStartDay: number = 1): Date {
 
 /**
  * Gets the end date of the current budget cycle.
- * @param {number} cycleStartDay - The day of the month when the cycle starts (default: 1).
- * @returns {Date} The end date of the current budget cycle.
  */
 export function getCurrentBudgetCycleEnd(cycleStartDay: number = 1): Date {
   const cycleStart = getCurrentBudgetCycleStart(cycleStartDay);
@@ -106,9 +108,6 @@ export function getCurrentBudgetCycleEnd(cycleStartDay: number = 1): Date {
 
 /**
  * Gets the budget for a specific category.
- * @param {Config} config - The configuration object.
- * @param {string} category - The category name.
- * @returns {number} The monthly budget amount for the category (0 if not found).
  */
 export function getCategoryBudget(config: Config, category: string): number {
   const budgets = config.budget?.categoryBudgets || [];
@@ -118,9 +117,6 @@ export function getCategoryBudget(config: Config, category: string): number {
 
 /**
  * Sets the budget for a specific category.
- * @param {Config} config - The configuration object.
- * @param {string} category - The category name.
- * @param {number} monthlyBudget - The monthly budget amount.
  */
 export function setCategoryBudget(
   config: Config,
@@ -142,4 +138,52 @@ export function setCategoryBudget(
   } else {
     budgets.push({ category, monthlyBudget });
   }
+}
+
+/**
+ * Gets a savings goal by name.
+ */
+export function getSavingsGoal(config: Config, goalName: string): SavingsGoal | undefined {
+  return config.savings?.goals?.find(goal => goal.name === goalName);
+}
+
+/**
+ * Sets or updates a savings goal.
+ */
+export function setSavingsGoal(
+  config: Config,
+  goalName: string,
+  target: number,
+  priority: 'low' | 'medium' | 'high',
+  deadline?: string
+): void {
+  if (!config.savings) {
+    config.savings = {};
+  }
+  if (!config.savings.goals) {
+    config.savings.goals = [];
+  }
+
+  const goals = config.savings.goals;
+  const existingIndex = goals.findIndex(goal => goal.name === goalName);
+  const newGoal: SavingsGoal = { name: goalName, target, priority, deadline };
+
+  if (existingIndex >= 0) {
+    goals[existingIndex] = newGoal;
+  } else {
+    goals.push(newGoal);
+  }
+}
+
+/**
+ * Removes a savings goal.
+ */
+export function removeSavingsGoal(config: Config, goalName: string): boolean {
+  if (!config.savings?.goals) {
+    return false;
+  }
+
+  const initialLength = config.savings.goals.length;
+  config.savings.goals = config.savings.goals.filter(goal => goal.name !== goalName);
+  return config.savings.goals.length < initialLength;
 }

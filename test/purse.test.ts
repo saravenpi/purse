@@ -5,6 +5,7 @@ import {
   beforeAll,
   afterAll,
   beforeEach,
+  afterEach,
 } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -14,11 +15,25 @@ import {
   clearTransactions,
   deleteTransaction,
   editTransaction,
+  getBudgetUsage,
+  getSavingsStats,
+  getSavingsTransactions,
 } from '../src/data';
-import { loadConfig, saveConfig, type Config } from '../src/config';
+import {
+  loadConfig,
+  saveConfig,
+  type Config,
+  getCategoryBudget,
+  setCategoryBudget,
+  getCurrentBudgetCycleStart,
+  getCurrentBudgetCycleEnd,
+  getSavingsGoal,
+  setSavingsGoal,
+  removeSavingsGoal,
+} from '../src/config';
 // Functions for testing command logic
 function handleAddAction(
-  options: { amount: number; description: string; category?: string },
+  options: { amount: number; description: string; category?: string; isSavings?: boolean },
   config: Config
 ) {
   const dbPath = config.database?.path || '~/.purse_data.json';
@@ -31,7 +46,7 @@ function handleAddAction(
       `Warning: Category '${options.category}' is not defined in your config file. Consider adding it.`
     );
   }
-  addTransaction(dbPath, options.amount, options.description, options.category);
+  addTransaction(dbPath, options.amount, options.description, options.category, options.isSavings);
 }
 
 function handleCategoryAddAction(categoryName: string, configPath: string) {
@@ -116,10 +131,10 @@ describe('Purse Core Logic', () => {
     }
     // Mock console.log and console.warn
     consoleOutput = [];
-    console.log = (...args: any[]) => {
+    console.log = (...args: unknown[]) => {
       consoleOutput.push(args.join(' '));
     };
-    console.warn = (...args: any[]) => {
+    console.warn = (...args: unknown[]) => {
       consoleOutput.push(args.join(' '));
     };
   });
@@ -153,6 +168,20 @@ describe('Purse Core Logic', () => {
     expect(data.transactions[0].amount).toBe(100);
     expect(data.transactions[0].description).toBe('Test Income');
     expect(data.transactions[0].category).toBe('Salary');
+    expect(data.transactions[0].isSavings).toBeUndefined();
+  });
+
+  test('should add a savings transaction', () => {
+    const config: Config = loadConfig(TEST_CONFIG_CATEGORIES_PATH).config;
+    addTransaction(config.database!.path!, 200, 'Emergency Fund', 'Savings', true);
+    expect(consoleOutput).toContain('Transaction added successfully.');
+
+    const data = JSON.parse(fs.readFileSync(config.database!.path!, 'utf8'));
+    expect(data.transactions).toHaveLength(1);
+    expect(data.transactions[0].amount).toBe(200);
+    expect(data.transactions[0].description).toBe('Emergency Fund');
+    expect(data.transactions[0].category).toBe('Savings');
+    expect(data.transactions[0].isSavings).toBe(true);
   });
 
   test('should warn when adding a transaction with an undefined category', () => {
@@ -446,6 +475,715 @@ describe('Purse Core Logic', () => {
       const loadedConfig = loadConfig(filePath).config;
       expect(loadedConfig.categories).toHaveLength(1);
       expect(loadedConfig.categories).toContain('ExistingCategory');
+    });
+  });
+
+  describe('Budget Management', () => {
+    const TEST_CONFIG_BUDGET_PATH = path.resolve(
+      __dirname,
+      './test_config_budget.yml'
+    );
+
+    beforeEach(() => {
+      fs.writeFileSync(
+        TEST_CONFIG_BUDGET_PATH,
+        `database:
+  path: ${TEST_DB_PATH}
+categories:
+  - Food
+  - Transport  
+  - Entertainment
+budget:
+  cycleStartDay: 1
+  categoryBudgets:
+    - category: Food
+      monthlyBudget: 500
+    - category: Transport
+      monthlyBudget: 200`
+      );
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(TEST_CONFIG_BUDGET_PATH)) {
+        fs.unlinkSync(TEST_CONFIG_BUDGET_PATH);
+      }
+    });
+
+    test('should get category budget', () => {
+      const { config } = loadConfig(TEST_CONFIG_BUDGET_PATH);
+      
+      expect(getCategoryBudget(config, 'Food')).toBe(500);
+      expect(getCategoryBudget(config, 'Transport')).toBe(200);
+      expect(getCategoryBudget(config, 'Entertainment')).toBe(0);
+      expect(getCategoryBudget(config, 'NonExistent')).toBe(0);
+    });
+
+    test('should set category budget for new category', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_BUDGET_PATH);
+      
+      setCategoryBudget(config, 'Entertainment', 300);
+      saveConfig(config, filePath);
+      
+      const updatedConfig = loadConfig(filePath).config;
+      expect(getCategoryBudget(updatedConfig, 'Entertainment')).toBe(300);
+      expect(updatedConfig.budget?.categoryBudgets).toHaveLength(3);
+    });
+
+    test('should update existing category budget', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_BUDGET_PATH);
+      
+      setCategoryBudget(config, 'Food', 600);
+      saveConfig(config, filePath);
+      
+      const updatedConfig = loadConfig(filePath).config;
+      expect(getCategoryBudget(updatedConfig, 'Food')).toBe(600);
+      expect(updatedConfig.budget?.categoryBudgets).toHaveLength(2);
+    });
+
+    test('should get current budget cycle dates', () => {
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      
+      expect(cycleStart).toBeInstanceOf(Date);
+      expect(cycleEnd).toBeInstanceOf(Date);
+      expect(cycleEnd.getTime()).toBeGreaterThan(cycleStart.getTime());
+      
+      // Cycle should be approximately 1 month
+      const diffInDays = (cycleEnd.getTime() - cycleStart.getTime()) / (1000 * 60 * 60 * 24);
+      expect(diffInDays).toBeGreaterThan(27);
+      expect(diffInDays).toBeLessThan(32);
+    });
+
+    test('should get current budget cycle dates with custom start day', () => {
+      const cycleStart15 = getCurrentBudgetCycleStart(15);
+      const cycleEnd15 = getCurrentBudgetCycleEnd(15);
+      
+      expect(cycleStart15.getDate()).toBe(15);
+      expect(cycleEnd15.getDate()).toBe(14);
+    });
+
+    test('should calculate budget usage correctly', () => {
+      const { config } = loadConfig(TEST_CONFIG_BUDGET_PATH);
+      
+      // Add some test transactions within current cycle
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const testDate = new Date(cycleStart.getTime() + 86400000); // 1 day after cycle start
+      
+      // Create transactions with specific dates
+      const transactions = [
+        {
+          id: '1',
+          amount: -100,
+          description: 'Groceries',
+          category: 'Food',
+          date: testDate.toISOString(),
+        },
+        {
+          id: '2',
+          amount: -50,
+          description: 'Bus fare',
+          category: 'Transport',
+          date: testDate.toISOString(),
+        },
+        {
+          id: '3',
+          amount: -200,
+          description: 'More groceries',
+          category: 'Food',
+          date: testDate.toISOString(),
+        },
+      ];
+      
+      // Write test transactions to file
+      fs.writeFileSync(TEST_DB_PATH, JSON.stringify({ transactions }));
+      
+      const budgets = config.budget?.categoryBudgets || [];
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      const budgetUsage = getBudgetUsage(TEST_DB_PATH, cycleStart, cycleEnd, budgets);
+      
+      expect(budgetUsage).toHaveLength(2);
+      
+      const foodUsage = budgetUsage.find(usage => usage.category === 'Food');
+      const transportUsage = budgetUsage.find(usage => usage.category === 'Transport');
+      
+      expect(foodUsage).toBeDefined();
+      expect(foodUsage?.budget).toBe(500);
+      expect(foodUsage?.spent).toBe(300); // 100 + 200
+      expect(foodUsage?.remaining).toBe(200); // 500 - 300
+      expect(foodUsage?.percentage).toBe(60); // 300/500 * 100
+      
+      expect(transportUsage).toBeDefined();
+      expect(transportUsage?.budget).toBe(200);
+      expect(transportUsage?.spent).toBe(50);
+      expect(transportUsage?.remaining).toBe(150);
+      expect(transportUsage?.percentage).toBe(25);
+    });
+
+    test('should handle over-budget scenarios', () => {
+      const { config } = loadConfig(TEST_CONFIG_BUDGET_PATH);
+      
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const testDate = new Date(cycleStart.getTime() + 86400000);
+      
+      // Create transactions that exceed budget
+      const transactions = [
+        {
+          id: '1',
+          amount: -600, // Exceeds Food budget of 500
+          description: 'Expensive groceries',
+          category: 'Food',
+          date: testDate.toISOString(),
+        },
+      ];
+      
+      fs.writeFileSync(TEST_DB_PATH, JSON.stringify({ transactions }));
+      
+      const budgets = config.budget?.categoryBudgets || [];
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      const budgetUsage = getBudgetUsage(TEST_DB_PATH, cycleStart, cycleEnd, budgets);
+      
+      const foodUsage = budgetUsage.find(usage => usage.category === 'Food');
+      
+      expect(foodUsage?.budget).toBe(500);
+      expect(foodUsage?.spent).toBe(600);
+      expect(foodUsage?.remaining).toBe(0); // Max of 0 and (500-600)
+      expect(foodUsage?.percentage).toBe(120); // 600/500 * 100
+    });
+
+    test('should only include expenses in budget calculations', () => {
+      const { config } = loadConfig(TEST_CONFIG_BUDGET_PATH);
+      
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const testDate = new Date(cycleStart.getTime() + 86400000);
+      
+      // Mix of income and expenses
+      const transactions = [
+        {
+          id: '1',
+          amount: -100,
+          description: 'Food expense',
+          category: 'Food',
+          date: testDate.toISOString(),
+        },
+        {
+          id: '2',
+          amount: 500, // Income - should not count towards budget
+          description: 'Food refund',
+          category: 'Food',
+          date: testDate.toISOString(),
+        },
+      ];
+      
+      fs.writeFileSync(TEST_DB_PATH, JSON.stringify({ transactions }));
+      
+      const budgets = config.budget?.categoryBudgets || [];
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      const budgetUsage = getBudgetUsage(TEST_DB_PATH, cycleStart, cycleEnd, budgets);
+      
+      const foodUsage = budgetUsage.find(usage => usage.category === 'Food');
+      
+      // Should only count the expense, not the income
+      expect(foodUsage?.spent).toBe(100);
+      expect(foodUsage?.percentage).toBe(20); // 100/500 * 100
+    });
+
+    test('should handle transactions outside budget cycle', () => {
+      const { config } = loadConfig(TEST_CONFIG_BUDGET_PATH);
+      
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      
+      // Create transactions outside the current cycle
+      const oldDate = new Date(cycleStart.getTime() - 86400000); // 1 day before cycle
+      const futureDate = new Date(cycleEnd.getTime() + 86400000); // 1 day after cycle
+      const inCycleDate = new Date(cycleStart.getTime() + 86400000); // In cycle
+      
+      const transactions = [
+        {
+          id: '1',
+          amount: -200,
+          description: 'Old expense',
+          category: 'Food',
+          date: oldDate.toISOString(),
+        },
+        {
+          id: '2',
+          amount: -100,
+          description: 'Current expense',
+          category: 'Food',
+          date: inCycleDate.toISOString(),
+        },
+        {
+          id: '3',
+          amount: -300,
+          description: 'Future expense',
+          category: 'Food',
+          date: futureDate.toISOString(),
+        },
+      ];
+      
+      fs.writeFileSync(TEST_DB_PATH, JSON.stringify({ transactions }));
+      
+      const budgets = config.budget?.categoryBudgets || [];
+      const budgetUsage = getBudgetUsage(TEST_DB_PATH, cycleStart, cycleEnd, budgets);
+      
+      const foodUsage = budgetUsage.find(usage => usage.category === 'Food');
+      
+      // Should only count the in-cycle transaction
+      expect(foodUsage?.spent).toBe(100);
+    });
+
+    test('should handle categories without budgets', () => {
+      const budgets: { category: string; monthlyBudget: number }[] = [];
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      
+      const budgetUsage = getBudgetUsage(TEST_DB_PATH, cycleStart, cycleEnd, budgets);
+      
+      expect(budgetUsage).toHaveLength(0);
+    });
+
+    test('should initialize budget config when not present', () => {
+      const config: Config = { categories: ['Test'] };
+      
+      setCategoryBudget(config, 'Test', 100);
+      
+      expect(config.budget).toBeDefined();
+      expect(config.budget?.categoryBudgets).toBeDefined();
+      expect(config.budget?.categoryBudgets).toHaveLength(1);
+      expect(config.budget?.categoryBudgets?.[0]?.category).toBe('Test');
+      expect(config.budget?.categoryBudgets?.[0]?.monthlyBudget).toBe(100);
+    });
+  });
+
+  describe('Budget CLI Commands', () => {
+    const TEST_CONFIG_CLI_PATH = path.resolve(
+      __dirname,
+      './test_config_cli.yml'
+    );
+
+    beforeEach(() => {
+      fs.writeFileSync(
+        TEST_CONFIG_CLI_PATH,
+        `database:
+  path: ${TEST_DB_PATH}
+categories:
+  - Food
+  - Transport
+budget:
+  cycleStartDay: 1
+  categoryBudgets:
+    - category: Food
+      monthlyBudget: 400`
+      );
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(TEST_CONFIG_CLI_PATH)) {
+        fs.unlinkSync(TEST_CONFIG_CLI_PATH);
+      }
+    });
+
+    test('should set budget via CLI-like function', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_CLI_PATH);
+      
+      // Simulate budget set command
+      setCategoryBudget(config, 'Transport', 150);
+      saveConfig(config, filePath);
+      
+      const updatedConfig = loadConfig(filePath).config;
+      expect(getCategoryBudget(updatedConfig, 'Transport')).toBe(150);
+      expect(getCategoryBudget(updatedConfig, 'Food')).toBe(400); // Should remain unchanged
+    });
+
+    test('should handle cycle day setting', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_CLI_PATH);
+      
+      // Set custom cycle day
+      if (!config.budget) config.budget = {};
+      config.budget.cycleStartDay = 15;
+      saveConfig(config, filePath);
+      
+      const updatedConfig = loadConfig(filePath).config;
+      expect(updatedConfig.budget?.cycleStartDay).toBe(15);
+      
+      // Test that cycle dates use the custom day
+      const cycleStart = getCurrentBudgetCycleStart(15);
+      expect(cycleStart.getDate()).toBe(15);
+    });
+
+    test('should list budgets correctly', () => {
+      const { config } = loadConfig(TEST_CONFIG_CLI_PATH);
+      
+      const budgets = config.budget?.categoryBudgets || [];
+      expect(budgets).toHaveLength(1);
+      expect(budgets[0]?.category).toBe('Food');
+      expect(budgets[0]?.monthlyBudget).toBe(400);
+    });
+
+    test('should handle budget status calculation for CLI', () => {
+      const { config } = loadConfig(TEST_CONFIG_CLI_PATH);
+      
+      // Add test transactions
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const testDate = new Date(cycleStart.getTime() + 86400000);
+      
+      const transactions = [
+        {
+          id: '1',
+          amount: -200,
+          description: 'Groceries',
+          category: 'Food',
+          date: testDate.toISOString(),
+        },
+      ];
+      
+      fs.writeFileSync(TEST_DB_PATH, JSON.stringify({ transactions }));
+      
+      const budgets = config.budget?.categoryBudgets || [];
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      const budgetUsage = getBudgetUsage(TEST_DB_PATH, cycleStart, cycleEnd, budgets);
+      
+      expect(budgetUsage).toHaveLength(1);
+      const foodUsage = budgetUsage[0];
+      expect(foodUsage).toBeDefined();
+      expect(foodUsage!.category).toBe('Food');
+      expect(foodUsage!.budget).toBe(400);
+      expect(foodUsage!.spent).toBe(200);
+      expect(foodUsage!.remaining).toBe(200);
+      expect(foodUsage!.percentage).toBe(50);
+    });
+
+    test('should validate budget inputs', () => {
+      const { config } = loadConfig(TEST_CONFIG_CLI_PATH);
+      
+      // Test setting negative budget (should work but unusual)
+      setCategoryBudget(config, 'Test', -100);
+      expect(getCategoryBudget(config, 'Test')).toBe(-100);
+      
+      // Test setting zero budget
+      setCategoryBudget(config, 'Test', 0);
+      expect(getCategoryBudget(config, 'Test')).toBe(0);
+      
+      // Test setting decimal budget
+      setCategoryBudget(config, 'Test', 99.99);
+      expect(getCategoryBudget(config, 'Test')).toBe(99.99);
+    });
+  });
+
+  describe('Integration Tests', () => {
+    test('should handle complete budget workflow', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_PATH);
+      
+      // 1. Add categories
+      config.categories = ['Food', 'Transport', 'Entertainment'];
+      
+      // 2. Set budgets
+      setCategoryBudget(config, 'Food', 500);
+      setCategoryBudget(config, 'Transport', 200);
+      // Entertainment deliberately left without budget
+      
+      // 3. Set cycle day
+      if (!config.budget) config.budget = {};
+      config.budget.cycleStartDay = 5;
+      
+      saveConfig(config, filePath);
+      
+      // 4. Add transactions
+      addTransaction(config.database?.path || TEST_DB_PATH, -150, 'Groceries', 'Food');
+      addTransaction(config.database?.path || TEST_DB_PATH, -50, 'Bus pass', 'Transport');
+      addTransaction(config.database?.path || TEST_DB_PATH, -30, 'Movie ticket', 'Entertainment');
+      
+      // 5. Verify budget calculations
+      const cycleStart = getCurrentBudgetCycleStart(5);
+      const cycleEnd = getCurrentBudgetCycleEnd(5);
+      const budgets = config.budget.categoryBudgets || [];
+      const budgetUsage = getBudgetUsage(config.database?.path || TEST_DB_PATH, cycleStart, cycleEnd, budgets);
+      
+      expect(budgetUsage).toHaveLength(2); // Only Food and Transport have budgets
+      
+      const foodUsage = budgetUsage.find(u => u.category === 'Food');
+      const transportUsage = budgetUsage.find(u => u.category === 'Transport');
+      
+      expect(foodUsage?.spent).toBe(150);
+      expect(foodUsage?.remaining).toBe(350);
+      expect(transportUsage?.spent).toBe(50);
+      expect(transportUsage?.remaining).toBe(150);
+      
+      // 6. Verify config persistence
+      const reloadedConfig = loadConfig(filePath).config;
+      expect(reloadedConfig.budget?.cycleStartDay).toBe(5);
+      expect(getCategoryBudget(reloadedConfig, 'Food')).toBe(500);
+      expect(getCategoryBudget(reloadedConfig, 'Entertainment')).toBe(0);
+    });
+
+    test('should handle budget overspending gracefully', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_PATH);
+      
+      setCategoryBudget(config, 'Food', 100);
+      saveConfig(config, filePath);
+      
+      // Add transaction that exceeds budget
+      addTransaction(config.database?.path || TEST_DB_PATH, -150, 'Expensive groceries', 'Food');
+      
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      const budgets = config.budget?.categoryBudgets || [];
+      const budgetUsage = getBudgetUsage(config.database?.path || TEST_DB_PATH, cycleStart, cycleEnd, budgets);
+      
+      const foodUsage = budgetUsage[0];
+      expect(foodUsage).toBeDefined();
+      expect(foodUsage!.spent).toBe(150);
+      expect(foodUsage!.remaining).toBe(0);
+      expect(foodUsage!.percentage).toBe(150);
+    });
+  });
+
+  describe('Savings Management', () => {
+    const TEST_CONFIG_SAVINGS_PATH = path.resolve(
+      __dirname,
+      './test_config_savings.yml'
+    );
+
+    beforeEach(() => {
+      fs.writeFileSync(
+        TEST_CONFIG_SAVINGS_PATH,
+        `database:
+  path: ${TEST_DB_PATH}
+categories:
+  - Savings
+  - Emergency
+savings:
+  goals:
+    - name: Emergency Fund
+      target: 10000
+      priority: high
+    - name: Vacation
+      target: 5000
+      priority: medium`
+      );
+    });
+
+    afterEach(() => {
+      if (fs.existsSync(TEST_CONFIG_SAVINGS_PATH)) {
+        fs.unlinkSync(TEST_CONFIG_SAVINGS_PATH);
+      }
+    });
+
+    test('should get savings goal', () => {
+      const { config } = loadConfig(TEST_CONFIG_SAVINGS_PATH);
+      
+      const emergencyGoal = getSavingsGoal(config, 'Emergency Fund');
+      expect(emergencyGoal).toBeDefined();
+      expect(emergencyGoal?.target).toBe(10000);
+      expect(emergencyGoal?.priority).toBe('high');
+      
+      const nonExistentGoal = getSavingsGoal(config, 'NonExistent');
+      expect(nonExistentGoal).toBeUndefined();
+    });
+
+    test('should set new savings goal', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_SAVINGS_PATH);
+      
+      setSavingsGoal(config, 'Car Fund', 15000, 'low', '2025-12-31');
+      saveConfig(config, filePath);
+      
+      const updatedConfig = loadConfig(filePath).config;
+      const carGoal = getSavingsGoal(updatedConfig, 'Car Fund');
+      expect(carGoal).toBeDefined();
+      expect(carGoal?.target).toBe(15000);
+      expect(carGoal?.priority).toBe('low');
+      expect(carGoal?.deadline).toBe('2025-12-31');
+      expect(updatedConfig.savings?.goals).toHaveLength(3);
+    });
+
+    test('should update existing savings goal', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_SAVINGS_PATH);
+      
+      setSavingsGoal(config, 'Emergency Fund', 12000, 'high');
+      saveConfig(config, filePath);
+      
+      const updatedConfig = loadConfig(filePath).config;
+      const emergencyGoal = getSavingsGoal(updatedConfig, 'Emergency Fund');
+      expect(emergencyGoal?.target).toBe(12000);
+      expect(updatedConfig.savings?.goals).toHaveLength(2);
+    });
+
+    test('should remove savings goal', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_SAVINGS_PATH);
+      
+      const removed = removeSavingsGoal(config, 'Vacation');
+      expect(removed).toBe(true);
+      saveConfig(config, filePath);
+      
+      const updatedConfig = loadConfig(filePath).config;
+      expect(getSavingsGoal(updatedConfig, 'Vacation')).toBeUndefined();
+      expect(updatedConfig.savings?.goals).toHaveLength(1);
+      
+      const notRemoved = removeSavingsGoal(config, 'NonExistent');
+      expect(notRemoved).toBe(false);
+    });
+
+    test('should get savings statistics', () => {
+      const { config } = loadConfig(TEST_CONFIG_SAVINGS_PATH);
+      
+      // Add test savings transactions
+      addTransaction(config.database!.path!, 500, 'Emergency savings', 'Savings', true);
+      addTransaction(config.database!.path!, 300, 'Monthly savings', 'Savings', true);
+      addTransaction(config.database!.path!, 200, 'Bonus savings', 'Savings', true);
+      addTransaction(config.database!.path!, -50, 'Regular expense', 'Food'); // Non-savings
+      
+      const stats = getSavingsStats(config.database!.path!);
+      
+      expect(stats.totalSavings).toBe(1000);
+      expect(stats.savingsTransactionCount).toBe(3);
+      expect(stats.averageSavingsTransaction).toBe(1000 / 3);
+    });
+
+    test('should get savings transactions', () => {
+      const { config } = loadConfig(TEST_CONFIG_SAVINGS_PATH);
+      
+      addTransaction(config.database!.path!, 500, 'Emergency savings', 'Savings', true);
+      addTransaction(config.database!.path!, 300, 'Monthly savings', 'Savings', true);
+      addTransaction(config.database!.path!, -50, 'Regular expense', 'Food'); // Non-savings
+      
+      const savingsTransactions = getSavingsTransactions(config.database!.path!);
+      
+      expect(savingsTransactions).toHaveLength(2);
+      expect(savingsTransactions[0]?.isSavings).toBe(true);
+      expect(savingsTransactions[1]?.isSavings).toBe(true);
+      // Check that all amounts are present, order may vary due to timestamp precision
+      const amounts = savingsTransactions.map(tx => tx.amount).sort();
+      expect(amounts).toEqual([300, 500]);
+    });
+
+    test('should filter savings transactions by date range', () => {
+      const { config } = loadConfig(TEST_CONFIG_SAVINGS_PATH);
+      
+      const now = new Date();
+      const yesterday = new Date(now.getTime() - 86400000);
+      
+      // Manually create transactions with specific dates
+      const transactions = [
+        {
+          id: '1',
+          amount: 500,
+          description: 'Old savings',
+          category: 'Savings',
+          isSavings: true,
+          date: yesterday.toISOString(),
+        },
+        {
+          id: '2',
+          amount: 300,
+          description: 'Today savings',
+          category: 'Savings',
+          isSavings: true,
+          date: now.toISOString(),
+        },
+      ];
+      
+      fs.writeFileSync(config.database!.path!, JSON.stringify({ transactions }));
+      
+      const todayOnwards = getSavingsTransactions(config.database!.path!, now);
+      expect(todayOnwards).toHaveLength(1);
+      expect(todayOnwards[0]!.description).toBe('Today savings');
+      
+      const upToToday = getSavingsTransactions(config.database!.path!, undefined, now);
+      expect(upToToday).toHaveLength(2);
+    });
+
+    test('should handle budget calculations excluding savings', () => {
+      const { config } = loadConfig(TEST_CONFIG_SAVINGS_PATH);
+      
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const testDate = new Date(cycleStart.getTime() + 86400000);
+      
+      const transactions = [
+        {
+          id: '1',
+          amount: -200,
+          description: 'Food expense',
+          category: 'Food',
+          date: testDate.toISOString(),
+        },
+        {
+          id: '2',
+          amount: 500,
+          description: 'Savings',
+          category: 'Savings',
+          isSavings: true,
+          date: testDate.toISOString(),
+        },
+      ];
+      
+      fs.writeFileSync(config.database!.path!, JSON.stringify({ transactions }));
+      
+      // Set up budget for Food category
+      const budgets = [{ category: 'Food', monthlyBudget: 300 }];
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      const budgetUsage = getBudgetUsage(config.database!.path!, cycleStart, cycleEnd, budgets);
+      
+      expect(budgetUsage).toHaveLength(1);
+      const foodUsage = budgetUsage[0];
+      expect(foodUsage).toBeDefined();
+      expect(foodUsage!.spent).toBe(200);
+      expect(foodUsage!.remaining).toBe(100);
+    });
+
+    test('should initialize savings config when not present', () => {
+      const config: Config = { categories: ['Test'] };
+      
+      setSavingsGoal(config, 'Test Goal', 1000, 'medium');
+      
+      expect(config.savings).toBeDefined();
+      expect(config.savings?.goals).toBeDefined();
+      expect(config.savings?.goals).toHaveLength(1);
+      expect(config.savings?.goals?.[0]?.name).toBe('Test Goal');
+      expect(config.savings?.goals?.[0]?.target).toBe(1000);
+      expect(config.savings?.goals?.[0]?.priority).toBe('medium');
+    });
+  });
+
+  describe('Integration Tests with Savings', () => {
+    test('should handle complete financial workflow with savings', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_PATH);
+      
+      // 1. Add categories
+      config.categories = ['Food', 'Salary', 'Savings'];
+      
+      // 2. Set budgets
+      setCategoryBudget(config, 'Food', 500);
+      
+      // 3. Set savings goals
+      setSavingsGoal(config, 'Emergency Fund', 10000, 'high');
+      
+      saveConfig(config, filePath);
+      
+      // 4. Add mixed transactions
+      addTransaction(config.database?.path || TEST_DB_PATH, 2000, 'Salary', 'Salary');
+      addTransaction(config.database?.path || TEST_DB_PATH, -150, 'Groceries', 'Food');
+      addTransaction(config.database?.path || TEST_DB_PATH, 500, 'Emergency savings', 'Savings', true);
+      
+      // 5. Verify savings calculations
+      const savingsStats = getSavingsStats(config.database?.path || TEST_DB_PATH);
+      expect(savingsStats.totalSavings).toBe(500);
+      expect(savingsStats.savingsTransactionCount).toBe(1);
+      
+      // 6. Verify budget calculations exclude savings
+      const cycleStart = getCurrentBudgetCycleStart(1);
+      const cycleEnd = getCurrentBudgetCycleEnd(1);
+      const budgets = config.budget?.categoryBudgets || [];
+      const budgetUsage = getBudgetUsage(config.database?.path || TEST_DB_PATH, cycleStart, cycleEnd, budgets);
+      
+      const foodUsage = budgetUsage.find(u => u.category === 'Food');
+      expect(foodUsage?.spent).toBe(150); // Should not include savings
+      
+      // 7. Verify goal progress
+      const emergencyGoal = getSavingsGoal(config, 'Emergency Fund');
+      expect(emergencyGoal?.target).toBe(10000);
+      const progress = (savingsStats.totalSavings / emergencyGoal!.target) * 100;
+      expect(progress).toBe(5); // 500/10000 * 100
     });
   });
 });

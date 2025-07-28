@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { editTransaction } from '../data';
+import { editTransaction, type Transaction } from '../data';
 import { loadConfig } from '../config';
 
 /**
@@ -23,7 +23,7 @@ export function createEditCommand(): Command {
       const { config } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
 
-      const updates: { [key: string]: any } = {};
+      const updates: Partial<Omit<Transaction, 'id'>> = {};
       if (options.amount !== undefined)
         updates.amount = parseFloat(options.amount);
       if (options.description !== undefined)

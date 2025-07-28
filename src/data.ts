@@ -1,12 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-interface Transaction {
-  id: string; // Add ID to transaction
+export interface Transaction {
+  id: string;
   amount: number;
   description: string;
   date: string;
   category?: string;
+  isSavings?: boolean;
 }
 
 interface PurseData {
@@ -15,8 +16,6 @@ interface PurseData {
 
 /**
  * Reads data from the specified JSON file.
- * @param {string} filePath - The path to the JSON data file.
- * @returns {PurseData} The parsed data, or an empty structure if the file doesn't exist or is invalid.
  */
 function readData(filePath: string): PurseData {
   if (!fs.existsSync(filePath)) {
@@ -33,8 +32,6 @@ function readData(filePath: string): PurseData {
 
 /**
  * Writes data to the specified JSON file.
- * @param {string} filePath - The path to the JSON data file.
- * @param {PurseData} data - The data to write.
  */
 function writeData(filePath: string, data: PurseData): void {
   try {
@@ -50,26 +47,26 @@ function writeData(filePath: string, data: PurseData): void {
 
 /**
  * Adds a new transaction to the data file.
- * @param {string} filePath - The path to the JSON data file.
- * @param {number} amount - The amount of the transaction.
- * @param {string} description - The description of the transaction.
- * @param {string} [category] - The category of the transaction.
  */
 export function addTransaction(
   filePath: string,
   amount: number,
   description: string,
-  category?: string
+  category?: string,
+  isSavings?: boolean
 ): void {
   const data = readData(filePath);
   const newTransaction: Transaction = {
-    id: Date.now().toString(), // Simple unique ID
+    id: Date.now().toString(),
     amount: amount,
     description: description,
     date: new Date().toISOString(),
   };
   if (category) {
     newTransaction.category = category;
+  }
+  if (isSavings) {
+    newTransaction.isSavings = isSavings;
   }
   data.transactions.push(newTransaction);
   writeData(filePath, data);
@@ -78,8 +75,6 @@ export function addTransaction(
 
 /**
  * Retrieves all transactions from the data file.
- * @param {string} filePath - The path to the JSON data file.
- * @returns {Transaction[]} An array of transactions.
  */
 export function getTransactions(filePath: string): Transaction[] {
   const data = readData(filePath);
@@ -88,7 +83,6 @@ export function getTransactions(filePath: string): Transaction[] {
 
 /**
  * Clears all transactions from the data file.
- * @param {string} filePath - The path to the JSON data file.
  */
 export function clearTransactions(filePath: string): void {
   writeData(filePath, { transactions: [] });
@@ -97,8 +91,6 @@ export function clearTransactions(filePath: string): void {
 
 /**
  * Deletes a transaction by its ID.
- * @param {string} filePath - The path to the JSON data file.
- * @param {string} id - The ID of the transaction to delete.
  */
 export function deleteTransaction(filePath: string, id: string): void {
   const data = readData(filePath);
@@ -114,9 +106,6 @@ export function deleteTransaction(filePath: string, id: string): void {
 
 /**
  * Edits an existing transaction.
- * @param {string} filePath - The path to the JSON data file.
- * @param {string} id - The ID of the transaction to edit.
- * @param {Partial<Transaction>} updates - The updates to apply to the transaction.
  */
 export function editTransaction(
   filePath: string,
@@ -151,11 +140,6 @@ export interface BudgetUsage {
 
 /**
  * Gets budget usage for all categories in the current cycle.
- * @param {string} filePath - The path to the JSON data file.
- * @param {Date} cycleStart - The start date of the budget cycle.
- * @param {Date} cycleEnd - The end date of the budget cycle.
- * @param {CategoryBudget[]} categoryBudgets - The category budgets configuration.
- * @returns {BudgetUsage[]} Array of budget usage information.
  */
 export function getBudgetUsage(
   filePath: string,
@@ -166,7 +150,7 @@ export function getBudgetUsage(
   const transactions = getTransactions(filePath);
   const cycleTransactions = transactions.filter((tx) => {
     const txDate = new Date(tx.date);
-    return txDate >= cycleStart && txDate <= cycleEnd && tx.amount < 0;
+    return txDate >= cycleStart && txDate <= cycleEnd && tx.amount < 0 && !tx.isSavings;
   });
 
   const categorySpending: { [key: string]: number } = {};
@@ -189,4 +173,70 @@ export function getBudgetUsage(
       percentage,
     };
   });
+}
+
+export interface SavingsStats {
+  totalSavings: number;
+  savingsTransactionCount: number;
+  averageSavingsTransaction: number;
+  thisMonthSavings: number;
+  lastMonthSavings: number;
+  savingsGrowthRate: number;
+}
+
+/**
+ * Gets comprehensive savings statistics.
+ */
+export function getSavingsStats(filePath: string): SavingsStats {
+  const transactions = getTransactions(filePath);
+  const savingsTransactions = transactions.filter(tx => tx.isSavings && tx.amount > 0);
+  
+  const now = new Date();
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  
+  const thisMonthSavings = savingsTransactions
+    .filter(tx => new Date(tx.date) >= thisMonthStart)
+    .reduce((sum, tx) => sum + tx.amount, 0);
+    
+  const lastMonthSavings = savingsTransactions
+    .filter(tx => {
+      const txDate = new Date(tx.date);
+      return txDate >= lastMonthStart && txDate <= lastMonthEnd;
+    })
+    .reduce((sum, tx) => sum + tx.amount, 0);
+  
+  const totalSavings = savingsTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+  const savingsTransactionCount = savingsTransactions.length;
+  const averageSavingsTransaction = savingsTransactionCount > 0 ? totalSavings / savingsTransactionCount : 0;
+  const savingsGrowthRate = lastMonthSavings > 0 ? ((thisMonthSavings - lastMonthSavings) / lastMonthSavings) * 100 : 0;
+  
+  return {
+    totalSavings,
+    savingsTransactionCount,
+    averageSavingsTransaction,
+    thisMonthSavings,
+    lastMonthSavings,
+    savingsGrowthRate,
+  };
+}
+
+/**
+ * Gets savings transactions within a date range.
+ */
+export function getSavingsTransactions(filePath: string, startDate?: Date, endDate?: Date): Transaction[] {
+  const transactions = getTransactions(filePath);
+  let savingsTransactions = transactions.filter(tx => tx.isSavings);
+  
+  if (startDate || endDate) {
+    savingsTransactions = savingsTransactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      if (startDate && txDate < startDate) return false;
+      if (endDate && txDate > endDate) return false;
+      return true;
+    });
+  }
+  
+  return savingsTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }

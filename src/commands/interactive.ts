@@ -11,6 +11,9 @@ import {
   editTransaction,
   clearTransactions,
   getBudgetUsage,
+  getSavingsStats,
+  getSavingsTransactions,
+  type Transaction,
 } from '../data';
 import {
   loadConfig,
@@ -20,6 +23,8 @@ import {
   setCategoryBudget,
   getCurrentBudgetCycleStart,
   getCurrentBudgetCycleEnd,
+  setSavingsGoal,
+  removeSavingsGoal,
 } from '../config';
 
 /**
@@ -39,11 +44,11 @@ async function manageTransactions(config: Config, configFilePath: string) {
     try {
       const transactions = getTransactions(dbPath);
       const transactionChoices = transactions.map((tx) => ({
-        name: `ID: ${tx.id}, Date: ${new Date(tx.date).toLocaleString(dateFormat)}, Amount: ${currencySymbol}${tx.amount.toFixed(2)}, Description: ${tx.description}${tx.category ? ` (Category: ${tx.category})` : ''}`,
+        name: `ID: ${tx.id}, Date: ${new Date(tx.date).toLocaleString(dateFormat)}, Amount: ${currencySymbol}${tx.amount.toFixed(2)}, Description: ${tx.description}${tx.category ? ` (Category: ${tx.category})` : ''}${tx.isSavings ? ' 🏦' : ''}`,
         value: tx.id,
       }));
 
-      const choices: any[] = [
+      const choices = [
         '➕ Add New Transaction',
         new inquirer.Separator(),
         ...(transactions.length === 0
@@ -92,6 +97,13 @@ async function manageTransactions(config: Config, configFilePath: string) {
               choices:
                 categories.length > 0 ? [...categories, 'Other'] : undefined,
             },
+            {
+              type: 'confirm',
+              name: 'isSavings',
+              message: 'Is this a savings transaction?',
+              default: false,
+              when: (answers) => parseFloat(answers.amount) > 0,
+            },
           ]);
           let finalCategory = addAnswers.category;
           if (addAnswers.category === 'Other') {
@@ -112,7 +124,8 @@ async function manageTransactions(config: Config, configFilePath: string) {
             dbPath,
             parseFloat(addAnswers.amount),
             addAnswers.description,
-            finalCategory
+            finalCategory,
+            addAnswers.isSavings
           );
           console.log('Transaction added successfully!');
         } catch (_) {
@@ -174,6 +187,13 @@ async function manageTransactions(config: Config, configFilePath: string) {
                             ? [...categories, 'Other']
                             : undefined,
                       },
+                      {
+                        type: 'confirm',
+                        name: 'isSavings',
+                        message: 'Is this a savings transaction?',
+                        default: transaction.isSavings || false,
+                        when: (answers) => parseFloat(answers.amount) > 0,
+                      },
                     ]);
                     let updatedCategory = editAnswers.category;
                     if (editAnswers.category === 'Other') {
@@ -196,6 +216,7 @@ async function manageTransactions(config: Config, configFilePath: string) {
                       amount: parseFloat(editAnswers.amount),
                       description: editAnswers.description,
                       category: updatedCategory,
+                      isSavings: editAnswers.isSavings,
                     });
                   } catch (_) {
                     console.log('Operation cancelled.');
@@ -281,7 +302,8 @@ async function manageBalance(config: Config, configFilePath: string) {
               dbPath,
               parseFloat(amount),
               'Initial Balance',
-              'System'
+              'System',
+              false
             );
             console.log(`Balance set to ${parseFloat(amount).toFixed(2)}.`);
           } catch (_) {
@@ -338,7 +360,8 @@ async function manageBalance(config: Config, configFilePath: string) {
               dbPath,
               parseFloat(amount),
               description,
-              updatedCategory
+              updatedCategory,
+              false
             );
             console.log(
               `Balance adjusted by ${parseFloat(amount).toFixed(2)}.`
@@ -360,11 +383,8 @@ async function manageBalance(config: Config, configFilePath: string) {
 
 /**
  * Generates a markdown financial report from transactions
- * @param {any[]} transactions - Array of transactions
- * @param {Config} config - The configuration object
- * @returns {string} The markdown formatted report
  */
-function generateMarkdownReport(transactions: any[], config: Config): string {
+function generateMarkdownReport(transactions: Transaction[], config: Config): string {
   const currencySymbol = config.display?.currencySymbol || '$';
   const dateFormat = config.display?.dateFormat || 'en-US';
   const reportDate = new Date().toLocaleDateString(dateFormat);
@@ -398,13 +418,16 @@ function generateMarkdownReport(transactions: any[], config: Config): string {
   });
 
   const totalIncome = transactions
-    .filter((tx) => tx.amount > 0)
+    .filter((tx) => tx.amount > 0 && !tx.isSavings)
     .reduce((sum, tx) => sum + tx.amount, 0);
   const totalExpenses = Math.abs(
     transactions
-      .filter((tx) => tx.amount < 0)
+      .filter((tx) => tx.amount < 0 && !tx.isSavings)
       .reduce((sum, tx) => sum + tx.amount, 0)
   );
+  const totalSavings = transactions
+    .filter((tx) => tx.isSavings && tx.amount > 0)
+    .reduce((sum, tx) => sum + tx.amount, 0);
   const sortedCategories = Object.entries(categoryStats).sort(
     ([, a], [, b]) => Math.abs(b.total) - Math.abs(a.total)
   );
@@ -421,6 +444,7 @@ function generateMarkdownReport(transactions: any[], config: Config): string {
 | **Current Balance** | ${currencySymbol}${balance.toFixed(2)} |
 | **Total Income** | ${currencySymbol}${totalIncome.toFixed(2)} |
 | **Total Expenses** | ${currencySymbol}${totalExpenses.toFixed(2)} |
+| **Total Savings** | ${currencySymbol}${totalSavings.toFixed(2)} |
 | **Net Amount** | ${currencySymbol}${(totalIncome - totalExpenses).toFixed(2)} |
 | **Total Transactions** | ${transactions.length} |
 | **Categories** | ${Object.keys(categoryStats).length} |
@@ -454,13 +478,43 @@ function generateMarkdownReport(transactions: any[], config: Config): string {
     markdown += `\n*Showing latest 20 transactions out of ${transactions.length} total.*\n`;
   }
 
+  if (totalSavings > 0) {
+    const savingsTransactions = transactions.filter(tx => tx.isSavings);
+    markdown += `
+## 🏦 Savings Summary
+
+| Metric | Value |
+|--------|-------|
+| **Total Savings** | ${currencySymbol}${totalSavings.toFixed(2)} |
+| **Savings Transactions** | ${savingsTransactions.length} |
+| **Average Savings** | ${currencySymbol}${(totalSavings / savingsTransactions.length).toFixed(2)} |
+| **Savings Rate** | ${totalIncome > 0 ? ((totalSavings / totalIncome) * 100).toFixed(1) : 0}% |
+
+### Recent Savings Transactions
+
+| Date | Amount | Description |
+|------|--------|-------------|
+`;
+
+    savingsTransactions.slice(0, 10).forEach((tx) => {
+      const date = new Date(tx.date).toLocaleDateString(dateFormat);
+      markdown += `| ${date} | +${currencySymbol}${tx.amount.toFixed(2)} | ${tx.description} |\n`;
+    });
+
+    if (savingsTransactions.length > 10) {
+      markdown += `\n*Showing latest 10 savings transactions out of ${savingsTransactions.length} total.*\n`;
+    }
+  }
+
   markdown += `
 ## 📈 Financial Health Indicators
 
 - **Income/Expense Ratio:** ${totalExpenses > 0 ? (totalIncome / totalExpenses).toFixed(2) : 'N/A'}
+- **Savings Rate:** ${totalIncome > 0 ? ((totalSavings / totalIncome) * 100).toFixed(1) : 0}%
 - **Average Transaction:** ${currencySymbol}${(transactions.reduce((sum, tx) => sum + Math.abs(tx.amount), 0) / transactions.length).toFixed(2)}
-- **Largest Income:** ${currencySymbol}${Math.max(...transactions.filter((tx) => tx.amount > 0).map((tx) => tx.amount), 0).toFixed(2)}
+- **Largest Income:** ${currencySymbol}${Math.max(...transactions.filter((tx) => tx.amount > 0 && !tx.isSavings).map((tx) => tx.amount), 0).toFixed(2)}
 - **Largest Expense:** ${currencySymbol}${Math.max(...transactions.filter((tx) => tx.amount < 0).map((tx) => Math.abs(tx.amount)), 0).toFixed(2)}
+- **Largest Savings:** ${currencySymbol}${Math.max(...transactions.filter((tx) => tx.isSavings && tx.amount > 0).map((tx) => tx.amount), 0).toFixed(2)}
 
 ---
 *Report generated by Purse CLI*
@@ -470,10 +524,278 @@ function generateMarkdownReport(transactions: any[], config: Config): string {
 }
 
 /**
+ * Manages savings-related interactive operations.
+ */
+async function manageSavings(config: Config, configFilePath: string) {
+  const dbPath = config.database?.path || '~/.purse_data.json';
+  const currencySymbol = config.display?.currencySymbol || '$';
+
+  let managingSavings = true;
+  while (managingSavings) {
+    try {
+      const stats = getSavingsStats(dbPath);
+      const goals = config.savings?.goals || [];
+
+      const { action } = await inquirer.prompt({
+        type: 'list',
+        name: 'action',
+        message: 'Savings Management:',
+        choices: [
+          '💰 Add Savings Transaction',
+          '🎯 Manage Savings Goals',
+          '📊 View Savings Statistics',
+          '📝 List Savings Transactions',
+          '↩️ Back to Main Menu',
+        ],
+        loop: false,
+        pageSize: 10,
+      });
+
+      switch (action) {
+        case '💰 Add Savings Transaction':
+          try {
+            const { amount, description } = await inquirer.prompt([
+              {
+                type: 'input',
+                name: 'amount',
+                message: 'Enter savings amount:',
+                validate: (value) => {
+                  const num = parseFloat(value);
+                  return !isNaN(num) && num > 0 || 'Please enter a positive number';
+                },
+              },
+              {
+                type: 'input',
+                name: 'description',
+                message: 'Enter description:',
+                default: 'Savings',
+              },
+            ]);
+
+            addTransaction(dbPath, parseFloat(amount), description, 'Savings', true);
+            console.log(chalk.green(`💰 Added ${currencySymbol}${parseFloat(amount).toFixed(2)} to savings`));
+          } catch (_) {
+            console.log('Operation cancelled.');
+          }
+          break;
+
+        case '🎯 Manage Savings Goals':
+          let managingGoals = true;
+          while (managingGoals) {
+            try {
+              const currentGoals = config.savings?.goals || [];
+              const goalChoices = [
+                '➕ Add New Goal',
+                new inquirer.Separator(),
+                ...(currentGoals.length === 0
+                  ? [chalk.gray('No goals yet. Add your first goal!')]
+                  : currentGoals.map(goal => ({
+                      name: `${goal.name} (${currencySymbol}${goal.target.toFixed(2)}) [${goal.priority.toUpperCase()}]`,
+                      value: goal.name,
+                    }))),
+                new inquirer.Separator(),
+                '↩️ Back to Savings Menu',
+              ];
+
+              const { goalAction } = await inquirer.prompt({
+                type: 'list',
+                name: 'goalAction',
+                message: 'Goal Management:',
+                choices: goalChoices,
+                loop: false,
+                pageSize: 10,
+              });
+
+              if (goalAction === '➕ Add New Goal') {
+                try {
+                  const goalAnswers = await inquirer.prompt([
+                    {
+                      type: 'input',
+                      name: 'name',
+                      message: 'Enter goal name:',
+                      validate: (value) => value.trim() !== '' || 'Goal name cannot be empty',
+                    },
+                    {
+                      type: 'input',
+                      name: 'target',
+                      message: 'Enter target amount:',
+                      validate: (value) => {
+                        const num = parseFloat(value);
+                        return !isNaN(num) && num > 0 || 'Please enter a positive number';
+                      },
+                    },
+                    {
+                      type: 'list',
+                      name: 'priority',
+                      message: 'Select priority:',
+                      choices: ['low', 'medium', 'high'],
+                      default: 'medium',
+                    },
+                    {
+                      type: 'input',
+                      name: 'deadline',
+                      message: 'Enter deadline (optional, YYYY-MM-DD):',
+                      validate: (value) => {
+                        if (!value) return true;
+                        const date = new Date(value);
+                        return !isNaN(date.getTime()) || 'Please enter a valid date (YYYY-MM-DD)';
+                      },
+                    },
+                  ]);
+
+                  setSavingsGoal(
+                    config,
+                    goalAnswers.name,
+                    parseFloat(goalAnswers.target),
+                    goalAnswers.priority,
+                    goalAnswers.deadline || undefined
+                  );
+                  saveConfig(config, configFilePath);
+                  console.log(chalk.green(`🎯 Goal '${goalAnswers.name}' created successfully`));
+                } catch (_) {
+                  console.log('Operation cancelled.');
+                }
+              } else if (goalAction === '↩️ Back to Savings Menu') {
+                managingGoals = false;
+              } else if (goalAction && typeof goalAction === 'string') {
+                const selectedGoal = currentGoals.find(g => g.name === goalAction);
+                if (selectedGoal) {
+                  try {
+                    const { goalOperation } = await inquirer.prompt({
+                      type: 'list',
+                      name: 'goalOperation',
+                      message: `Manage Goal '${selectedGoal.name}':`,
+                      choices: [
+                        '✏️ Edit Goal',
+                        '🗑️ Delete Goal',
+                        '↩️ Back to Goals List',
+                      ],
+                    });
+
+                    if (goalOperation === '✏️ Edit Goal') {
+                      const editAnswers = await inquirer.prompt([
+                        {
+                          type: 'input',
+                          name: 'target',
+                          message: 'Enter new target amount:',
+                          default: selectedGoal.target.toString(),
+                          validate: (value) => {
+                            const num = parseFloat(value);
+                            return !isNaN(num) && num > 0 || 'Please enter a positive number';
+                          },
+                        },
+                        {
+                          type: 'list',
+                          name: 'priority',
+                          message: 'Select priority:',
+                          choices: ['low', 'medium', 'high'],
+                          default: selectedGoal.priority,
+                        },
+                        {
+                          type: 'input',
+                          name: 'deadline',
+                          message: 'Enter deadline (optional, YYYY-MM-DD):',
+                          default: selectedGoal.deadline || '',
+                          validate: (value) => {
+                            if (!value) return true;
+                            const date = new Date(value);
+                            return !isNaN(date.getTime()) || 'Please enter a valid date (YYYY-MM-DD)';
+                          },
+                        },
+                      ]);
+
+                      setSavingsGoal(
+                        config,
+                        selectedGoal.name,
+                        parseFloat(editAnswers.target),
+                        editAnswers.priority,
+                        editAnswers.deadline || undefined
+                      );
+                      saveConfig(config, configFilePath);
+                      console.log(chalk.green(`✅ Goal '${selectedGoal.name}' updated successfully`));
+                    } else if (goalOperation === '🗑️ Delete Goal') {
+                      const { confirmDelete } = await inquirer.prompt({
+                        type: 'confirm',
+                        name: 'confirmDelete',
+                        message: `Are you sure you want to delete goal '${selectedGoal.name}'?`,
+                        default: false,
+                      });
+
+                      if (confirmDelete) {
+                        removeSavingsGoal(config, selectedGoal.name);
+                        saveConfig(config, configFilePath);
+                        console.log(chalk.green(`🗑️ Goal '${selectedGoal.name}' deleted successfully`));
+                      }
+                    }
+                  } catch (_) {
+                    console.log('Operation cancelled.');
+                  }
+                }
+              }
+            } catch (_) {
+              console.log('Operation cancelled.');
+              managingGoals = false;
+            }
+          }
+          break;
+
+        case '📊 View Savings Statistics':
+          console.log(chalk.bold('\n💰 Savings Overview\n'));
+          
+          console.log(`Total Savings: ${chalk.green(`${currencySymbol}${stats.totalSavings.toFixed(2)}`)}`);
+          console.log(`This Month: ${currencySymbol}${stats.thisMonthSavings.toFixed(2)}`);
+          console.log(`Last Month: ${currencySymbol}${stats.lastMonthSavings.toFixed(2)}`);
+          console.log(`Growth Rate: ${stats.savingsGrowthRate >= 0 ? chalk.green(`+${stats.savingsGrowthRate.toFixed(1)}%`) : chalk.red(`${stats.savingsGrowthRate.toFixed(1)}%`)}`);
+          console.log(`Transactions: ${stats.savingsTransactionCount}`);
+          console.log(`Average: ${currencySymbol}${stats.averageSavingsTransaction.toFixed(2)}`);
+
+          if (goals.length > 0) {
+            console.log(chalk.bold('\n🎯 Goals Progress\n'));
+            goals.forEach((goal) => {
+              const percentage = goal.target > 0 ? (stats.totalSavings / goal.target) * 100 : 0;
+              const progressBar = '█'.repeat(Math.min(Math.round(percentage / 5), 20));
+              const emptyBar = '░'.repeat(Math.max(0, 20 - Math.round(percentage / 5)));
+              const statusColor = percentage >= 100 ? chalk.green : percentage >= 75 ? chalk.yellow : chalk.red;
+              
+              console.log(`${goal.name.padEnd(20)} ${statusColor(progressBar)}${chalk.gray(emptyBar)} ${percentage.toFixed(1)}%`);
+              console.log(`  Target: ${currencySymbol}${goal.target.toFixed(2)} | Progress: ${currencySymbol}${stats.totalSavings.toFixed(2)} | Remaining: ${currencySymbol}${Math.max(0, goal.target - stats.totalSavings).toFixed(2)}`);
+              if (goal.deadline) {
+                console.log(`  Deadline: ${goal.deadline}`);
+              }
+              console.log();
+            });
+          }
+          break;
+
+        case '📝 List Savings Transactions':
+          const savingsTransactions = getSavingsTransactions(dbPath);
+          if (savingsTransactions.length === 0) {
+            console.log(chalk.yellow('No savings transactions found.'));
+          } else {
+            console.log(chalk.bold('\n💰 Savings Transactions\n'));
+            savingsTransactions.slice(0, 10).forEach((tx) => {
+              const date = new Date(tx.date).toLocaleDateString(config.display?.dateFormat || 'en-US');
+              console.log(`${date.padEnd(12)} ${chalk.green(`${currencySymbol}${tx.amount.toFixed(2)}`).padEnd(20)} ${tx.description}`);
+            });
+            if (savingsTransactions.length > 10) {
+              console.log(chalk.gray(`\n... and ${savingsTransactions.length - 10} more transactions`));
+            }
+          }
+          break;
+
+        case '↩️ Back to Main Menu':
+          managingSavings = false;
+          break;
+      }
+    } catch (_) {
+      console.log('Operation cancelled.');
+      managingSavings = false;
+    }
+  }
+}
+
+/**
  * Manages budget-related interactive operations.
- * @param {Config} config - The configuration object.
- * @param {string} configFilePath - The path to the configuration file.
- * @returns {Promise<void>} Promise that resolves when budget management is complete.
  */
 async function manageBudget(config: Config, configFilePath: string) {
   const dbPath = config.database?.path || '~/.purse_data.json';
@@ -658,6 +980,7 @@ async function manageGraphs(config: Config) {
           '📈 Balance Evolution',
           '📊 Category Distribution',
           '📊 Category Bar Chart',
+          '🏦 Savings Progress',
           '📋 Export Financial Report (MD)',
           '↩️ Back to Main Menu',
         ],
@@ -889,6 +1212,57 @@ async function manageGraphs(config: Config) {
           console.log(`Total Transactions: ${barTotalTransactions}`);
           break;
 
+        case '🏦 Savings Progress':
+          const savingsStats = getSavingsStats(dbPath);
+          const goals = config.savings?.goals || [];
+
+          if (savingsStats.totalSavings === 0) {
+            console.log(chalk.yellow('No savings transactions found.'));
+            break;
+          }
+
+          console.log(chalk.bold('\n🏦 Savings Progress Overview\n'));
+          
+          console.log(`Total Savings: ${chalk.green(`${currencySymbol}${savingsStats.totalSavings.toFixed(2)}`)}`);
+          console.log(`This Month: ${currencySymbol}${savingsStats.thisMonthSavings.toFixed(2)}`);
+          console.log(`Last Month: ${currencySymbol}${savingsStats.lastMonthSavings.toFixed(2)}`);
+          console.log(`Growth Rate: ${savingsStats.savingsGrowthRate >= 0 ? chalk.green(`+${savingsStats.savingsGrowthRate.toFixed(1)}%`) : chalk.red(`${savingsStats.savingsGrowthRate.toFixed(1)}%`)}`);
+          console.log(`Transactions: ${savingsStats.savingsTransactionCount}`);
+          console.log(`Average: ${currencySymbol}${savingsStats.averageSavingsTransaction.toFixed(2)}`);
+
+          if (goals.length > 0) {
+            console.log(chalk.bold('\n🎯 Goals Progress\n'));
+            goals.forEach((goal) => {
+              const percentage = goal.target > 0 ? (savingsStats.totalSavings / goal.target) * 100 : 0;
+              const progressBar = '█'.repeat(Math.min(Math.round(percentage / 5), 20));
+              const emptyBar = '░'.repeat(Math.max(0, 20 - Math.round(percentage / 5)));
+              const statusColor = percentage >= 100 ? chalk.green : percentage >= 75 ? chalk.yellow : chalk.red;
+              const priorityColor = goal.priority === 'high' ? chalk.red : 
+                                   goal.priority === 'medium' ? chalk.yellow : chalk.blue;
+              
+              console.log(`${goal.name.padEnd(20)} ${priorityColor(`[${goal.priority.toUpperCase()}]`)}`);
+              console.log(`  ${statusColor(progressBar)}${chalk.gray(emptyBar)} ${percentage.toFixed(1)}%`);
+              console.log(`  Target: ${currencySymbol}${goal.target.toFixed(2)} | Progress: ${currencySymbol}${savingsStats.totalSavings.toFixed(2)} | Remaining: ${currencySymbol}${Math.max(0, goal.target - savingsStats.totalSavings).toFixed(2)}`);
+              if (goal.deadline) {
+                const deadlineDate = new Date(goal.deadline);
+                const daysUntil = Math.ceil((deadlineDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                const deadlineColor = daysUntil < 30 ? chalk.red : daysUntil < 90 ? chalk.yellow : chalk.green;
+                console.log(`  Deadline: ${deadlineColor(goal.deadline)} (${daysUntil} days)`);
+              }
+              console.log();
+            });
+          }
+
+          const savingsTransactions = getSavingsTransactions(dbPath);
+          if (savingsTransactions.length > 0) {
+            console.log(chalk.bold('\n📈 Savings Timeline (Last 10 Transactions)\n'));
+            savingsTransactions.slice(0, 10).forEach((tx) => {
+              const date = new Date(tx.date).toLocaleDateString(dateFormat);
+              console.log(`${date.padEnd(12)} ${chalk.green(`+${currencySymbol}${tx.amount.toFixed(2)}`).padEnd(20)} ${tx.description}`);
+            });
+          }
+          break;
+
         case '📋 Export Financial Report (MD)':
           try {
             const exportTransactions = getTransactions(dbPath);
@@ -972,6 +1346,7 @@ export function createInteractiveCommand(): Command {
                 '💰 Balance',
                 '📂 Categories',
                 '💸 Budget',
+                '🏦 Savings',
                 '📊 Reports & Analytics',
                 '🚪 Exit',
               ],
@@ -1149,6 +1524,9 @@ export function createInteractiveCommand(): Command {
               break;
             case '💸 Budget':
               await manageBudget(config, configFilePath);
+              break;
+            case '🏦 Savings':
+              await manageSavings(config, configFilePath);
               break;
             case '📊 Reports & Analytics':
               await manageGraphs(config);

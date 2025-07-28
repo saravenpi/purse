@@ -4,7 +4,6 @@ import { loadConfig } from '../config';
 
 /**
  * Creates the 'add' command for adding new transactions.
- * @returns {Command} The Commander command object.
  */
 export function createAddCommand(): Command {
   const addCommand = new Command();
@@ -18,6 +17,7 @@ export function createAddCommand(): Command {
       'The description of the transaction'
     )
     .option('-c, --category <category>', 'The category of the transaction')
+    .option('-s, --savings', 'Mark this transaction as savings')
     .action((options, command) => {
       const { config } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
@@ -33,7 +33,8 @@ export function createAddCommand(): Command {
         dbPath,
         parseFloat(options.amount),
         options.description,
-        options.category
+        options.category,
+        options.savings
       );
     });
 

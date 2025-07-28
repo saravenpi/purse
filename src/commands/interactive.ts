@@ -5,22 +5,21 @@ import { loadConfig, saveConfig, Config } from '../config';
 
 /**
  * Creates the 'interactive' command for an interactive CLI interface.
- * @param {Config} config - The configuration object.
- * @param {string} configFilePath - The path to the configuration file.
  * @returns {Command} The Commander command object.
  */
-export function createInteractiveCommand(config: Config, configFilePath: string): Command {
+export function createInteractiveCommand(): Command {
   const interactiveCommand = new Command();
 
   interactiveCommand
     .name('interactive')
     .alias('i')
     .description('Start an interactive CLI session')
-    .action(async () => {
+    .action(async (options, command) => {
+      const { config, filePath: configFilePath } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
       const currencySymbol = config.display?.currencySymbol || '$';
-      const dateFormat = config.display?.dateFormat || 'en-US';
       let categories = config.categories || [];
+      const dateFormat = config.display?.dateFormat || 'en-US';
 
       console.log('Starting interactive session...');
 

@@ -1,13 +1,12 @@
 import { Command } from 'commander';
 import { editTransaction } from '../data';
-import { Config } from '../config';
+import { loadConfig } from '../config';
 
 /**
  * Creates the 'edit' command for editing transactions.
- * @param {Config} config - The configuration object.
  * @returns {Command} The Commander command object.
  */
-export function createEditCommand(config: Config): Command {
+export function createEditCommand(): Command {
   const editCommand = new Command();
 
   editCommand
@@ -17,7 +16,8 @@ export function createEditCommand(config: Config): Command {
     .option('-a, --amount <amount>', 'New amount for the transaction')
     .option('-d, --description <description>', 'New description for the transaction')
     .option('-c, --category <category>', 'New category for the transaction')
-    .action((id, options) => {
+    .action((id, options, command) => {
+      const { config } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
 
       const updates: { [key: string]: any } = {};

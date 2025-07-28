@@ -1,13 +1,12 @@
 import { Command } from 'commander';
 import { addTransaction } from '../data';
-import { Config } from '../config';
+import { loadConfig } from '../config';
 
 /**
  * Creates the 'update-balance' command to adjust the current balance.
- * @param {Config} config - The configuration object.
  * @returns {Command} The Commander command object.
  */
-export function createUpdateBalanceCommand(config: Config): Command {
+export function createUpdateBalanceCommand(): Command {
   const updateBalanceCommand = new Command();
 
   updateBalanceCommand
@@ -16,7 +15,8 @@ export function createUpdateBalanceCommand(config: Config): Command {
     .argument('<amount>', 'The amount to adjust the balance by (positive for income, negative for expense)')
     .option('-d, --description <description>', 'Description for the balance adjustment', 'Balance Adjustment')
     .option('-c, --category <category>', 'Category for the balance adjustment', 'System')
-    .action((amount, options) => {
+    .action((amount, options, command) => {
+      const { config } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
 
       addTransaction(dbPath, parseFloat(amount), options.description, options.category);

@@ -1,20 +1,20 @@
 import { Command } from 'commander';
 import { addTransaction, clearTransactions } from '../data';
-import { Config } from '../config';
+import { loadConfig } from '../config';
 
 /**
  * Creates the 'set-balance' command to set the initial balance.
- * @param {Config} config - The configuration object.
  * @returns {Command} The Commander command object.
  */
-export function createSetBalanceCommand(config: Config): Command {
+export function createSetBalanceCommand(): Command {
   const setBalanceCommand = new Command();
 
   setBalanceCommand
     .name('set-balance')
     .description('Set the initial balance, clearing all existing transactions')
     .argument('<amount>', 'The amount to set as the new balance')
-    .action((amount) => {
+    .action((amount, command) => {
+      const { config } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
 
       clearTransactions(dbPath);

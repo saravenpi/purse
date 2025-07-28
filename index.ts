@@ -2,7 +2,6 @@
 
 import { Command } from 'commander';
 import { getAllCommands } from './src/commands';
-import { loadConfig, Config } from './src/config';
 
 const program = new Command();
 
@@ -20,17 +19,10 @@ program.on('--help', () => {
   console.log('  $ purse list');
 });
 
-// Parse only the known options (global ones) to get the config path early
-// This is a common pattern for global options that affect command setup
-program.parse(process.argv);
-const options = program.opts(); // Get options from the initial parse
-const { config, filePath: configFilePath } = loadConfig(options.config);
+// Add all commands
+getAllCommands().forEach(command => program.addCommand(command));
 
-// Add all commands, passing the loaded config and its file path
-getAllCommands(config, configFilePath).forEach(command => program.addCommand(command));
-
-// Now, parse the full arguments, including subcommands and their options
-// This second parse is crucial for subcommands to be recognized
+// Parse arguments
 program.parse(process.argv);
 
 if (!process.argv.slice(2).length) {

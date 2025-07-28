@@ -1,6 +1,6 @@
 {
   "name": "purse",
-  "version": "0.3.0",
+  "version": "0.0.4",
   "module": "index.ts",
   "type": "module",
   "private": true,

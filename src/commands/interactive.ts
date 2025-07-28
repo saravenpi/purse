@@ -41,6 +41,8 @@ async function manageTransactions(config: Config, configFilePath: string) {
         name: 'action',
         message: 'Manage Transactions:',
         choices: choices,
+        loop: false,
+        pageSize: 10,
       });
 
       if (action === '➕ Add New Transaction') {
@@ -76,7 +78,7 @@ async function manageTransactions(config: Config, configFilePath: string) {
             }
           }
           addTransaction(dbPath, parseFloat(addAnswers.amount), addAnswers.description, finalCategory);
-          managingTransactions = false;
+          console.log('Transaction added successfully!');
         } catch (e) {
           console.log('Operation cancelled.');
         }
@@ -95,6 +97,8 @@ async function manageTransactions(config: Config, configFilePath: string) {
                 name: 'specificAction',
                 message: `Manage Transaction (ID: ${transaction.id}):`,
                 choices: ['✏️ Edit', '🗑️ Delete', '↩️ Back to Transaction List'],
+                loop: false,
+                pageSize: 10,
               });
 
               switch (specificAction) {
@@ -190,6 +194,8 @@ async function manageBalance(config: Config) {
         name: 'action',
         message: 'Manage Balance:',
         choices: ['⚖️ Set Balance', '💱 Update Balance', '↩️ Back to Main Menu'],
+        loop: false,
+        pageSize: 10,
       });
 
       switch (action) {
@@ -377,6 +383,8 @@ async function manageGraphs(config: Config) {
           '📋 Export Financial Report (MD)',
           '↩️ Back to Main Menu',
         ],
+        loop: false,
+        pageSize: 10,
       });
 
       switch (action) {
@@ -599,6 +607,8 @@ export function createInteractiveCommand(): Command {
                 '📊 Reports & Analytics',
                 '🚪 Exit',
               ],
+              loop: false,
+              pageSize: 10,
             },
           ]);
 
@@ -626,6 +636,8 @@ export function createInteractiveCommand(): Command {
                     name: 'categoryAction',
                     message: 'Category Management:',
                     choices: categoryChoices,
+                    loop: false,
+                    pageSize: 10,
                   });
 
                   if (categoryAction === '➕ Add Category') {
@@ -658,6 +670,8 @@ export function createInteractiveCommand(): Command {
                           name: 'specificCategoryAction',
                           message: `Manage Category '${categoryAction}':`,
                           choices: ['✏️ Edit', '🗑️ Delete', '↩️ Back to Category List'],
+                          loop: false,
+                          pageSize: 10,
                         });
 
                         switch (specificCategoryAction) {

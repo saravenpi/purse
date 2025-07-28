@@ -25,7 +25,10 @@ export function createSavingsCommand(): Command {
     .action((options, command) => {
       const { config, filePath } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
-      const currencySymbol = config.display?.currencySymbol || '$';
+      const currencySymbol = config.display?.currencySymbol || '
+
+  return savingsCommand;
+};
 
       if (options.add) {
         if (options.add <= 0) {

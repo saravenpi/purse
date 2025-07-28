@@ -1017,10 +1017,26 @@ async function manageGraphs(config: Config) {
           };
 
           console.log('\n📈 Balance Evolution Over Time\n');
+          
+          const maxBalance = Math.max(...balanceData.map(Math.abs));
+          const minBalance = Math.min(...balanceData);
+          const maxValue = maxBalance;
+          const minValue = Math.min(0, minBalance);
+          
+          const maxLength = Math.max(
+            `${currencySymbol}${maxValue.toFixed(2)}`.length,
+            `${currencySymbol}${Math.abs(minValue).toFixed(2)}`.length + (minValue < 0 ? 1 : 0)
+          );
+          
           console.log(
             plot(balanceData, {
               height: 15,
-              format: (x: number) => `${currencySymbol}${x.toFixed(2)}`,
+              format: (x: number) => {
+                const formatted = x < 0 
+                  ? `-${currencySymbol}${Math.abs(x).toFixed(2)}`
+                  : `${currencySymbol}${x.toFixed(2)}`;
+                return formatted.padStart(maxLength);
+              },
             })
           );
 

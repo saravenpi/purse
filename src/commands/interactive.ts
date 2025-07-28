@@ -64,7 +64,19 @@ async function manageTransactions(config: Config, configFilePath: string) {
               choices: categories.length > 0 ? [...categories, 'Other'] : undefined,
             },
           ]);
-          addTransaction(dbPath, parseFloat(addAnswers.amount), addAnswers.description, addAnswers.category === 'Other' ? await inquirer.prompt({ type: 'input', name: 'newCategory', message: 'Enter new category:' }).then(a => a.newCategory) : addAnswers.category);
+          let finalCategory = addAnswers.category;
+          if (addAnswers.category === 'Other') {
+            const { newCategory } = await inquirer.prompt({ type: 'input', name: 'newCategory', message: 'Enter new category:' });
+            finalCategory = newCategory;
+            if (newCategory && !categories.includes(newCategory)) {
+              categories.push(newCategory);
+              config.categories = categories;
+              saveConfig(config, configFilePath);
+              console.log(`Category '${newCategory}' added to your config.`);
+            }
+          }
+          addTransaction(dbPath, parseFloat(addAnswers.amount), addAnswers.description, finalCategory);
+          managingTransactions = false;
         } catch (e) {
           console.log('Operation cancelled.');
         }
@@ -110,7 +122,17 @@ async function manageTransactions(config: Config, configFilePath: string) {
                         choices: categories.length > 0 ? [...categories, 'Other'] : undefined,
                       },
                     ]);
-                    const updatedCategory = editAnswers.category === 'Other' ? await inquirer.prompt({ type: 'input', name: 'newCategory', message: 'Enter new category:' }).then(a => a.newCategory) : editAnswers.category;
+                    let updatedCategory = editAnswers.category;
+                    if (editAnswers.category === 'Other') {
+                      const { newCategory } = await inquirer.prompt({ type: 'input', name: 'newCategory', message: 'Enter new category:' });
+                      updatedCategory = newCategory;
+                      if (newCategory && !categories.includes(newCategory)) {
+                        categories.push(newCategory);
+                        config.categories = categories;
+                        saveConfig(config, configFilePath);
+                        console.log(`Category '${newCategory}' added to your config.`);
+                      }
+                    }
                     editTransaction(dbPath, selectedTransactionId, {
                       amount: parseFloat(editAnswers.amount),
                       description: editAnswers.description,
@@ -209,7 +231,17 @@ async function manageBalance(config: Config) {
                 choices: config.categories && config.categories.length > 0 ? [...config.categories, 'Other'] : undefined,
               },
             ]);
-            const updatedCategory = category === 'Other' ? await inquirer.prompt({ type: 'input', name: 'newCategory', message: 'Enter new category:' }).then(a => a.newCategory) : category;
+            let updatedCategory = category;
+            if (category === 'Other') {
+              const { newCategory } = await inquirer.prompt({ type: 'input', name: 'newCategory', message: 'Enter new category:' });
+              updatedCategory = newCategory;
+              if (newCategory && !config.categories?.includes(newCategory)) {
+                config.categories = config.categories || [];
+                config.categories.push(newCategory);
+                saveConfig(config, configFilePath);
+                console.log(`Category '${newCategory}' added to your config.`);
+              }
+            }
             addTransaction(dbPath, parseFloat(amount), description, updatedCategory);
             console.log(`Balance adjusted by ${parseFloat(amount).toFixed(2)}.`);
           } catch (e) {
@@ -561,9 +593,9 @@ export function createInteractiveCommand(): Command {
               name: 'action',
               message: 'What do you want to do?',
               choices: [
-                '📝 Manage Transactions',
-                '💰 Manage Balance',
-                '📂 Manage Categories',
+                '📝 Transactions',
+                '💰 Balance',
+                '📂 Categories',
                 '📊 Reports & Analytics',
                 '🚪 Exit',
               ],
@@ -571,13 +603,13 @@ export function createInteractiveCommand(): Command {
           ]);
 
           switch (answers.action) {
-            case '📝 Manage Transactions':
+            case '📝 Transactions':
               await manageTransactions(config, configFilePath);
               break;
-            case '💰 Manage Balance':
+            case '💰 Balance':
               await manageBalance(config);
               break;
-            case '📂 Manage Categories':
+            case '📂 Categories':
               let categories = config.categories || [];
               let managingCategories = true;
               while (managingCategories) {

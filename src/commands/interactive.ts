@@ -4,6 +4,7 @@ import { plot } from 'asciichart';
 import chalk from 'chalk';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as readline from 'readline';
 import {
   addTransaction,
   getTransactions,
@@ -68,8 +69,8 @@ async function manageTransactions(config: Config, configFilePath: string) {
       const { action } = await inquirer.prompt({
         type: 'list',
         name: 'action',
-        message: 'Manage Transactions:',
-        choices: choices,
+        message: 'Manage Transactions: (Press Esc or Ctrl+C to go back)',
+        choices: choices as any,
         loop: false,
         pageSize: 10,
       });
@@ -277,7 +278,7 @@ async function manageBalance(config: Config, configFilePath: string) {
       const { action } = await inquirer.prompt({
         type: 'list',
         name: 'action',
-        message: 'Manage Balance:',
+        message: 'Manage Balance: (Press Esc or Ctrl+C to go back)',
         choices: [
           '⚖️ Set Balance',
           '💱 Update Balance',
@@ -601,7 +602,7 @@ async function manageSavings(config: Config, configFilePath: string) {
                 type: 'list',
                 name: 'goalAction',
                 message: 'Goal Management:',
-                choices: goalChoices,
+                choices: goalChoices as any,
                 loop: false,
                 pageSize: 10,
               });
@@ -975,7 +976,7 @@ async function manageGraphs(config: Config) {
       const { action } = await inquirer.prompt({
         type: 'list',
         name: 'action',
-        message: 'Reports & Analytics:',
+        message: 'Reports & Analytics: (Press Esc or Ctrl+C to go back)',
         choices: [
           '📈 Balance Evolution',
           '📊 Category Distribution',
@@ -1347,7 +1348,22 @@ export function createInteractiveCommand(): Command {
         command.parent.opts().config
       );
 
+      // Set up global escape key handling
+      readline.emitKeypressEvents(process.stdin);
+      if (process.stdin.isTTY) {
+        process.stdin.setRawMode(true);
+      }
+      
+      // Add keypress listener for escape key
+      process.stdin.on('keypress', (_chunk: any, key: any) => {
+        if (key && key.name === 'escape') {
+          // Emit SIGINT to simulate Ctrl+C
+          process.emit('SIGINT' as any);
+        }
+      });
+
       console.log('Starting interactive session...');
+      console.log(chalk.gray('(Tip: Press Escape or Ctrl+C to go back at any time)\n'));
 
       let running = true;
       while (running) {
@@ -1356,7 +1372,7 @@ export function createInteractiveCommand(): Command {
             {
               type: 'list',
               name: 'action',
-              message: 'What do you want to do?',
+              message: 'What do you want to do? (Press Esc or Ctrl+C to exit)',
               choices: [
                 '📝 Transactions',
                 '💰 Balance',
@@ -1549,11 +1565,17 @@ export function createInteractiveCommand(): Command {
               break;
             case '🚪 Exit':
               console.log('Exiting interactive session.');
+              if (process.stdin.isTTY) {
+                process.stdin.setRawMode(false);
+              }
               running = false;
               break;
           }
         } catch (_) {
           console.log('Exiting interactive session.');
+          if (process.stdin.isTTY) {
+            process.stdin.setRawMode(false);
+          }
           running = false;
         }
       }

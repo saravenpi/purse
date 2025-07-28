@@ -1,26 +1,33 @@
 import { Command } from 'commander';
 import { getTransactions } from '../data';
+import { loadConfig } from '../config';
 
 /**
  * Creates the 'list' command for listing all transactions.
- * @param {object} config - The configuration object.
  * @returns {Command} The Commander command object.
  */
-export function createListCommand(config: any): Command {
+export function createListCommand(): Command {
   const listCommand = new Command();
 
   listCommand
     .name('list')
     .description('List all transactions')
-    .action(() => {
+    .action((options, command) => {
+      const globalOptions = command.parent.opts();
+      const config = loadConfig(globalOptions.config);
       const dbPath = config.database?.path || '~/.purse_data.json';
       const transactions = getTransactions(dbPath);
+      const currencySymbol = config.display?.currencySymbol || '$';
+      const dateFormat = config.display?.dateFormat || 'en-US';
+
       if (transactions.length === 0) {
         console.log('No transactions found.');
       } else {
         console.log('Transactions:');
         transactions.forEach((tx) => {
-          console.log(`  Date: ${new Date(tx.date).toLocaleString()}, Amount: ${tx.amount}, Description: ${tx.description}`);
+          const date = new Date(tx.date).toLocaleString(dateFormat);
+          const category = tx.category ? ` (Category: ${tx.category})` : '';
+          console.log(`  Date: ${date}, Amount: ${currencySymbol}${tx.amount.toFixed(2)}, Description: ${tx.description}${category}`);
         });
       }
     });

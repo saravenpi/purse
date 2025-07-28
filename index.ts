@@ -2,16 +2,15 @@
 
 import { Command } from 'commander';
 import { getAllCommands } from './src/commands';
-import { loadConfig } from './src/config';
 
 const program = new Command();
 
 program
   .name('purse')
-  .option('-c, --config <path>', 'Path to the configuration file (default: ~/.purse.yml)')
   .description('A simple CLI tool to track your finances.')
   .version('0.0.1')
-  .usage('[command] [options]');
+  .usage('[command] [options]')
+  .option('-c, --config <path>', 'Path to the configuration file (default: ~/.purse.yml)');
 
 program.on('--help', () => {
   console.log('');
@@ -20,11 +19,10 @@ program.on('--help', () => {
   console.log('  $ purse list');
 });
 
-const options = program.opts();
-const config = loadConfig(options.config);
+// Add all commands without passing config initially
+getAllCommands().forEach(command => program.addCommand(command));
 
-getAllCommands(config).forEach(command => program.addCommand(command));
-
+// Parse arguments once, after all commands are defined
 program.parse(process.argv);
 
 if (!process.argv.slice(2).length) {

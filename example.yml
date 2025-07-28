@@ -1,2 +1,6 @@
 database:
   path: ./my_purse_data.json
+
+display:
+  currencySymbol: '€'
+  dateFormat: 'fr-FR'

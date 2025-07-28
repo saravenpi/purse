@@ -14,6 +14,12 @@ curl -fsSL https://raw.githubusercontent.com/your-username/purse/main/install.sh
 purse --help
 ```
 
+To add a transaction with a category:
+
+```bash
+purse add --amount 25.50 --description "Coffee" --category "Food"
+```
+
 To check your current balance:
 
 ```bash
@@ -67,6 +73,10 @@ Example `~/.purse.yml`:
 ```yaml
 database:
   path: ~/.purse_data.json
+
+display:
+  currencySymbol: '€'
+  dateFormat: 'fr-FR' # e.g., 'en-US', 'en-GB', 'fr-FR'
 ```
 
 An example configuration file `example.yml` is provided in the project root for reference.

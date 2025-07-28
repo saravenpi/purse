@@ -5,6 +5,7 @@ interface Transaction {
   amount: number;
   description: string;
   date: string;
+  category?: string; // New field
 }
 
 interface PurseData {
@@ -51,14 +52,18 @@ function writeData(filePath: string, data: PurseData): void {
  * @param {string} filePath - The path to the JSON data file.
  * @param {number} amount - The amount of the transaction.
  * @param {string} description - The description of the transaction.
+ * @param {string} [category] - The category of the transaction.
  */
-export function addTransaction(filePath: string, amount: number, description: string): void {
+export function addTransaction(filePath: string, amount: number, description: string, category?: string): void {
   const data = readData(filePath);
   const newTransaction: Transaction = {
     amount: amount,
     description: description,
     date: new Date().toISOString(),
   };
+  if (category) {
+    newTransaction.category = category;
+  }
   data.transactions.push(newTransaction);
   writeData(filePath, data);
   console.log('Transaction added successfully.');

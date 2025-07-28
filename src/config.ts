@@ -6,6 +6,10 @@ export interface Config {
   database?: {
     path?: string;
   };
+  display?: {
+    currencySymbol?: string;
+    dateFormat?: string;
+  };
 }
 
 /**

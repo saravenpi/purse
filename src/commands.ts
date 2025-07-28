@@ -8,11 +8,11 @@ import { createBalanceCommand } from './commands/balance';
  * Returns an array of all commands for the purse CLI.
  * @returns {Command[]} An array of Commander command objects.
  */
-export function getAllCommands(config: object): Command {
+export function getAllCommands(): Command[] {
   return [
-    createAddCommand(config),
-    createListCommand(config),
-    createInteractiveCommand(config),
-    createBalanceCommand(config)
+    createAddCommand(),
+    createListCommand(),
+    createInteractiveCommand(),
+    createBalanceCommand()
   ];
 }

@@ -3,7 +3,7 @@
 set -e
 
 # Clone the repository
-git clone https://github.com/your-username/purse.git
+git clone https://github.com/saravenpi/purse.git
 cd purse
 
 # Install bun

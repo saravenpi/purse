@@ -4,9 +4,10 @@ import { addTransaction, getTransactions, deleteTransaction, editTransaction, cl
 import { loadConfig, saveConfig, Config } from '../config';
 
 /**
- * Manages transaction-related interactive operations.
+ * Manages transaction-related interactive operations (both incomes and expenses).
  * @param {Config} config - The configuration object.
  * @param {string} configFilePath - The path to the configuration file.
+ * @returns {Promise<void>} Promise that resolves when transaction management is complete.
  */
 async function manageTransactions(config: Config, configFilePath: string) {
   const dbPath = config.database?.path || '~/.purse_data.json';
@@ -44,7 +45,7 @@ async function manageTransactions(config: Config, configFilePath: string) {
             {
               type: 'input',
               name: 'amount',
-              message: 'Enter amount:',
+              message: 'Enter amount (positive for income, negative for expense):',
               validate: (value) => !isNaN(parseFloat(value)) || 'Please enter a valid number',
             },
             {
@@ -65,7 +66,7 @@ async function manageTransactions(config: Config, configFilePath: string) {
         }
       } else if (action === '↩️ Back to Main Menu') {
         managingTransactions = false;
-      } else { // A transaction was selected
+      } else {
         const selectedTransactionId = action;
         const transaction = transactions.find(tx => tx.id === selectedTransactionId);
 
@@ -106,7 +107,11 @@ async function manageTransactions(config: Config, configFilePath: string) {
                       },
                     ]);
                     const updatedCategory = editAnswers.category === 'Other' ? await inquirer.prompt({ type: 'input', name: 'newCategory', message: 'Enter new category:' }).then(a => a.newCategory) : editAnswers.category;
-                    editTransaction(dbPath, selectedTransactionId, { amount: parseFloat(editAnswers.amount), description: editAnswers.description, category: updatedCategory });
+                    editTransaction(dbPath, selectedTransactionId, {
+                      amount: parseFloat(editAnswers.amount),
+                      description: editAnswers.description,
+                      category: updatedCategory,
+                    });
                   } catch (e) {
                     console.log('Operation cancelled.');
                   }
@@ -114,7 +119,7 @@ async function manageTransactions(config: Config, configFilePath: string) {
                 case '🗑️ Delete':
                   try {
                     deleteTransaction(dbPath, selectedTransactionId);
-                    managingSpecificTransaction = false; // Exit after deletion
+                    managingSpecificTransaction = false;
                   } catch (e) {
                     console.log('Operation cancelled.');
                   }
@@ -125,14 +130,14 @@ async function manageTransactions(config: Config, configFilePath: string) {
               }
             } catch (e) {
               console.log('Operation cancelled.');
-              managingSpecificTransaction = false; // Exit specific transaction management on Ctrl+C
+              managingSpecificTransaction = false;
             }
           }
         }
       }
     } catch (e) {
       console.log('Operation cancelled.');
-      managingTransactions = false; // Exit transaction management on Ctrl+C
+      managingTransactions = false;
     }
   }
 }
@@ -140,6 +145,7 @@ async function manageTransactions(config: Config, configFilePath: string) {
 /**
  * Manages balance-related interactive operations.
  * @param {Config} config - The configuration object.
+ * @returns {Promise<void>} Promise that resolves when balance management is complete.
  */
 async function manageBalance(config: Config) {
   const dbPath = config.database?.path || '~/.purse_data.json';
@@ -210,7 +216,7 @@ async function manageBalance(config: Config) {
       }
     } catch (e) {
       console.log('Operation cancelled.');
-      managingBalance = false; // Exit balance management on Ctrl+C
+      managingBalance = false;
     }
   }
 }
@@ -256,7 +262,7 @@ export function createInteractiveCommand(): Command {
               await manageBalance(config);
               break;
             case '📂 Manage Categories':
-              let categories = config.categories || []; // Reload categories to reflect external changes
+              let categories = config.categories || [];
               let managingCategories = true;
               while (managingCategories) {
                 try {
@@ -289,7 +295,7 @@ export function createInteractiveCommand(): Command {
                     }
                   } else if (categoryAction === '↩️ Back to Main Menu') {
                     managingCategories = false;
-                  } else { // A category was selected
+                  } else {
                     let managingSpecificCategory = true;
                     while (managingSpecificCategory) {
                       try {
@@ -319,8 +325,7 @@ export function createInteractiveCommand(): Command {
                                   config.categories = categories;
                                   saveConfig(config, configFilePath);
                                   console.log(`Category '${categoryAction}' renamed to '${updatedCategoryName}'.`);
-                                  // For now, we'll just break and let the outer loop re-render
-                                  managingSpecificCategory = false; // Exit to re-render category list
+                                  managingSpecificCategory = false;
                                 }
                               }
                             } catch (e) {
@@ -333,7 +338,7 @@ export function createInteractiveCommand(): Command {
                               config.categories = categories;
                               saveConfig(config, configFilePath);
                               console.log(`Category '${categoryAction}' deleted.`);
-                              managingSpecificCategory = false; // Exit this loop after deletion
+                              managingSpecificCategory = false;
                             } catch (e) {
                               console.log('Operation cancelled.');
                             }
@@ -344,13 +349,13 @@ export function createInteractiveCommand(): Command {
                         }
                       } catch (e) {
                         console.log('Operation cancelled.');
-                        managingSpecificCategory = false; // Exit specific category management on Ctrl+C
+                        managingSpecificCategory = false;
                       }
                     }
                   }
                 } catch (e) {
                   console.log('Operation cancelled.');
-                  managingCategories = false; // Exit category management on Ctrl+C
+                  managingCategories = false;
                 }
               }
               break;
@@ -361,7 +366,7 @@ export function createInteractiveCommand(): Command {
           }
         } catch (e) {
           console.log('Exiting interactive session.');
-          running = false; // Exit main loop on Ctrl+C
+          running = false;
         }
       }
     });

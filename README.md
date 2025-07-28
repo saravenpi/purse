@@ -5,7 +5,7 @@ A simple CLI tool to track your finances.
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/your-username/purse/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/saravenpi/purse/main/install.sh | sh
 ```
 
 ## Usage
@@ -62,30 +62,10 @@ purse -i
 
 The interactive mode now provides consolidated options for managing your finances:
 
-*   **📝 Manage Transactions**: Add, list, edit, or delete individual transactions.
+*   **📝 Manage Transactions**: Add, list, edit, or delete individual transactions (both income and expenses).
 *   **💰 Manage Balance**: View your current balance, set a new balance, or update it with income/expenses.
 *   **📂 Manage Categories**: Add, edit, or delete transaction categories.
 
-
-### Category Management
-
-To add a new category:
-
-```bash
-purse category add <category-name>
-```
-
-To edit an existing category:
-
-```bash
-purse category edit <old-category-name> <new-category-name>
-```
-
-To delete a category:
-
-```bash
-purse category delete <category-name>
-```
 
 ### Development
 

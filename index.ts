@@ -2,6 +2,7 @@
 
 import { Command } from 'commander';
 import { getAllCommands } from './src/commands';
+import { loadConfig, Config } from './src/config';
 
 const program = new Command();
 
@@ -21,6 +22,12 @@ program.on('--help', () => {
 
 // Add all commands
 getAllCommands().forEach(command => program.addCommand(command));
+
+// Handle Ctrl+C (SIGINT) for graceful exit
+process.on('SIGINT', () => {
+  console.log('\nGoodbye! 👋');
+  process.exit(0);
+});
 
 // Parse arguments
 program.parse(process.argv);

@@ -1,14 +1,15 @@
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import { addTransaction, getTransactions, deleteTransaction, editTransaction } from '../data';
-import { Config } from '../config';
+import { loadConfig, saveConfig, Config } from '../config';
 
 /**
  * Creates the 'interactive' command for an interactive CLI interface.
  * @param {Config} config - The configuration object.
+ * @param {string} configFilePath - The path to the configuration file.
  * @returns {Command} The Commander command object.
  */
-export function createInteractiveCommand(config: Config): Command {
+export function createInteractiveCommand(config: Config, configFilePath: string): Command {
   const interactiveCommand = new Command();
 
   interactiveCommand
@@ -19,7 +20,7 @@ export function createInteractiveCommand(config: Config): Command {
       const dbPath = config.database?.path || '~/.purse_data.json';
       const currencySymbol = config.display?.currencySymbol || '$';
       const dateFormat = config.display?.dateFormat || 'en-US';
-      const categories = config.categories || [];
+      let categories = config.categories || [];
 
       console.log('Starting interactive session...');
 
@@ -30,7 +31,7 @@ export function createInteractiveCommand(config: Config): Command {
             type: 'list',
             name: 'action',
             message: 'What do you want to do?',
-            choices: ['Add Transaction', 'List Transactions', 'Check Balance', 'Edit Transaction', 'Delete Transaction', 'Exit'],
+            choices: ['Add Transaction', 'List Transactions', 'Check Balance', 'Edit Transaction', 'Delete Transaction', 'Manage Categories', 'Exit'],
           },
         ]);
 
@@ -131,6 +132,85 @@ export function createInteractiveCommand(config: Config): Command {
               choices: transactionsToDelete.map(tx => ({ name: `${new Date(tx.date).toLocaleString(dateFormat)} - ${currencySymbol}${tx.amount.toFixed(2)} - ${tx.description}`, value: tx.id })),
             });
             deleteTransaction(dbPath, transactionIdToDelete);
+            break;
+          case 'Manage Categories':
+            let managingCategories = true;
+            while (managingCategories) {
+              const categoryAnswers = await inquirer.prompt({
+                type: 'list',
+                name: 'categoryAction',
+                message: 'Category Management:',
+                choices: ['Add Category', 'Edit Category', 'Delete Category', 'Back to Main Menu'],
+              });
+
+              switch (categoryAnswers.categoryAction) {
+                case 'Add Category':
+                  const { newCategoryName } = await inquirer.prompt({
+                    type: 'input',
+                    name: 'newCategoryName',
+                    message: 'Enter new category name:',
+                    validate: (value) => value.trim() !== '' || 'Category name cannot be empty.',
+                  });
+                  if (!categories.includes(newCategoryName)) {
+                    categories.push(newCategoryName);
+                    config.categories = categories;
+                    saveConfig(config, configFilePath);
+                    console.log(`Category '${newCategoryName}' added.`);
+                  } else {
+                    console.log(`Category '${newCategoryName}' already exists.`);
+                  }
+                  break;
+                case 'Edit Category':
+                  if (categories.length === 0) {
+                    console.log('No categories to edit.');
+                    break;
+                  }
+                  const { categoryToEdit } = await inquirer.prompt({
+                    type: 'list',
+                    name: 'categoryToEdit',
+                    message: 'Select category to edit:',
+                    choices: categories,
+                  });
+                  const { updatedCategoryName } = await inquirer.prompt({
+                    type: 'input',
+                    name: 'updatedCategoryName',
+                    message: `Enter new name for '${categoryToEdit}':`,
+                    default: categoryToEdit,
+                    validate: (value) => value.trim() !== '' || 'Category name cannot be empty.',
+                  });
+                  if (categoryToEdit !== updatedCategoryName && categories.includes(updatedCategoryName)) {
+                    console.log(`Category '${updatedCategoryName}' already exists. Cannot rename.`);
+                  } else {
+                    const index = categories.indexOf(categoryToEdit);
+                    if (index !== -1) {
+                      categories[index] = updatedCategoryName;
+                      config.categories = categories;
+                      saveConfig(config, configFilePath);
+                      console.log(`Category '${categoryToEdit}' renamed to '${updatedCategoryName}'.`);
+                    }
+                  }
+                  break;
+                case 'Delete Category':
+                  if (categories.length === 0) {
+                    console.log('No categories to delete.');
+                    break;
+                  }
+                  const { categoryToDelete } = await inquirer.prompt({
+                    type: 'list',
+                    name: 'categoryToDelete',
+                    message: 'Select category to delete:',
+                    choices: categories,
+                  });
+                  categories = categories.filter(cat => cat !== categoryToDelete);
+                  config.categories = categories;
+                  saveConfig(config, configFilePath);
+                  console.log(`Category '${categoryToDelete}' deleted.`);
+                  break;
+                case 'Back to Main Menu':
+                  managingCategories = false;
+                  break;
+              }
+            }
             break;
           case 'Exit':
             console.log('Exiting interactive session.');

@@ -60,6 +60,28 @@ purse interactive
 purse -i
 ```
 
+Within the interactive mode, you can now also manage categories.
+
+### Category Management
+
+To add a new category:
+
+```bash
+purse category add <category-name>
+```
+
+To edit an existing category:
+
+```bash
+purse category edit <old-category-name> <new-category-name>
+```
+
+To delete a category:
+
+```bash
+purse category delete <category-name>
+```
+
 ### Development
 
 To run the CLI in development mode with hot reloading:
@@ -112,6 +134,28 @@ categories:
 ```
 
 An example configuration file `example.yml` is provided in the project root for reference.
+
+### Category Management
+
+Categories can be managed via the CLI or interactive mode. Changes are saved to your configuration file.
+
+To add a new category:
+
+```bash
+purse category add <category-name>
+```
+
+To edit an existing category:
+
+```bash
+purse category edit <old-category-name> <new-category-name>
+```
+
+To delete a category:
+
+```bash
+purse category delete <category-name>
+```
 
 ### Testing
 

@@ -26,7 +26,7 @@ export function createListCommand(config: Config): Command {
         transactions.forEach((tx) => {
           const date = new Date(tx.date).toLocaleString(dateFormat);
           const category = tx.category ? ` (Category: ${tx.category})` : '';
-          console.log(`  Date: ${date}, Amount: ${currencySymbol}${tx.amount.toFixed(2)}, Description: ${tx.description}${category}`);
+          console.log(`  ID: ${tx.id}, Date: ${date}, Amount: ${currencySymbol}${tx.amount.toFixed(2)}, Description: ${tx.description}${category}`);
         });
       }
     });

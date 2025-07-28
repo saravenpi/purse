@@ -2,8 +2,11 @@ import { expect, test, describe, beforeAll, afterAll, beforeEach } from "bun:tes
 import * as fs from 'fs';
 import * as path from 'path';
 import { addTransaction, getTransactions, clearTransactions, deleteTransaction, editTransaction } from '../src/data';
-import { loadConfig, Config } from '../src/config';
+import { loadConfig, saveConfig, Config } from '../src/config';
 import { handleAddAction } from '../src/commands/add'; // Import the extracted action
+import { handleCategoryAddAction } from '../src/commands/category/add';
+import { handleCategoryEditAction } from '../src/commands/category/edit';
+import { handleCategoryDeleteAction } from '../src/commands/category/delete';
 
 const TEST_DB_PATH = path.resolve(__dirname, './test_data.json');
 const TEST_CONFIG_PATH = path.resolve(__dirname, './test_config.yml');
@@ -58,7 +61,7 @@ describe('Purse Core Logic', () => {
   });
 
   test('should add a transaction with category', () => {
-    const config: Config = loadConfig(TEST_CONFIG_CATEGORIES_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_CATEGORIES_PATH).config;
     addTransaction(config.database!.path!, 100, 'Test Income', 'Salary');
     expect(consoleOutput).toContain('Transaction added successfully.');
 
@@ -70,7 +73,7 @@ describe('Purse Core Logic', () => {
   });
 
   test('should warn when adding a transaction with an undefined category', () => {
-    const config: Config = loadConfig(TEST_CONFIG_CATEGORIES_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_CATEGORIES_PATH).config;
     
     // Directly call the extracted action logic
     handleAddAction({ amount: 50, description: 'Undefined Category', category: 'Undefined' }, config);
@@ -80,7 +83,7 @@ describe('Purse Core Logic', () => {
   });
 
   test('should list transactions with category and default display', () => {
-    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_PATH).config;
     addTransaction(config.database!.path!, 100, 'Test Income', 'Salary');
     
     // Manually call the list logic
@@ -92,7 +95,7 @@ describe('Purse Core Logic', () => {
     transactions.forEach((tx) => {
       const date = new Date(tx.date).toLocaleString(dateFormat);
       const category = tx.category ? ` (Category: ${tx.category})` : '';
-      output += `  Date: ${date}, Amount: ${currencySymbol}${tx.amount.toFixed(2)}, Description: ${tx.description}${category}\n`;
+      output += `  ID: ${tx.id}, Date: ${date}, Amount: ${currencySymbol}${tx.amount.toFixed(2)}, Description: ${tx.description}${category}\n`;
     });
     
     expect(output).toContain('Transactions:');
@@ -100,7 +103,7 @@ describe('Purse Core Logic', () => {
   });
 
   test('should display correct balance with default currency', () => {
-    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_PATH).config;
     addTransaction(config.database!.path!, 100, 'Test Income');
     
     const transactions = getTransactions(config.database!.path!); 
@@ -111,7 +114,7 @@ describe('Purse Core Logic', () => {
   });
 
   test('should list transactions with custom display options', () => {
-    const config: Config = loadConfig(TEST_CONFIG_CUSTOM_DISPLAY_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_CUSTOM_DISPLAY_PATH).config;
     addTransaction(config.database!.path!, 100, 'Test Income', 'Salary');
     addTransaction(config.database!.path!, 20, 'Coffee', 'Food');
 
@@ -123,7 +126,7 @@ describe('Purse Core Logic', () => {
     transactions.forEach((tx) => {
       const date = new Date(tx.date).toLocaleString(dateFormat);
       const category = tx.category ? ` (Category: ${tx.category})` : '';
-      output += `  Date: ${date}, Amount: ${currencySymbol}${tx.amount.toFixed(2)}, Description: ${tx.description}${category}\n`;
+      output += `  ID: ${tx.id}, Date: ${date}, Amount: ${currencySymbol}${tx.amount.toFixed(2)}, Description: ${tx.description}${category}\n`;
     });
 
     expect(output).toContain('Transactions:');
@@ -132,7 +135,7 @@ describe('Purse Core Logic', () => {
   });
 
   test('should display correct balance with custom currency', () => {
-    const config: Config = loadConfig(TEST_CONFIG_CUSTOM_DISPLAY_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_CUSTOM_DISPLAY_PATH).config;
     addTransaction(config.database!.path!, 100, 'Test Income');
     addTransaction(config.database!.path!, 20, 'Coffee');
     
@@ -144,7 +147,7 @@ describe('Purse Core Logic', () => {
   });
 
   test('should set balance and clear previous transactions', () => {
-    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_PATH).config;
     addTransaction(config.database!.path!, 100, 'Old Transaction');
     let data = JSON.parse(fs.readFileSync(config.database!.path!, 'utf8'));
     expect(data.transactions).toHaveLength(1);
@@ -161,7 +164,7 @@ describe('Purse Core Logic', () => {
   });
 
   test('should update balance by adding a new transaction', () => {
-    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_PATH).config;
     addTransaction(config.database!.path!, 100, 'Initial Balance');
     addTransaction(config.database!.path!, 50, 'Income Adjustment', 'Salary');
     expect(consoleOutput).toContain('Transaction added successfully.');
@@ -180,7 +183,7 @@ describe('Purse Core Logic', () => {
   });
 
   test('should delete a transaction', () => {
-    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_PATH).config;
     addTransaction(config.database!.path!, 100, 'To be deleted');
     let data = JSON.parse(fs.readFileSync(config.database!.path!, 'utf8'));
     const transactionId = data.transactions[0].id;
@@ -193,13 +196,13 @@ describe('Purse Core Logic', () => {
   });
 
   test('should not delete a non-existent transaction', () => {
-    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_PATH).config;
     deleteTransaction(config.database!.path!, 'non-existent-id');
     expect(consoleOutput).toContain('Transaction with ID non-existent-id not found.');
   });
 
   test('should edit a transaction', () => {
-    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_PATH).config;
     addTransaction(config.database!.path!, 100, 'Original Description', 'Original Category');
     let data = JSON.parse(fs.readFileSync(config.database!.path!, 'utf8'));
     const transactionId = data.transactions[0].id;
@@ -215,8 +218,101 @@ describe('Purse Core Logic', () => {
   });
 
   test('should not edit a non-existent transaction', () => {
-    const config: Config = loadConfig(TEST_CONFIG_PATH);
+    const config: Config = loadConfig(TEST_CONFIG_PATH).config;
     editTransaction(config.database!.path!, 'non-existent-id', { amount: 100 });
     expect(consoleOutput).toContain('Transaction with ID non-existent-id not found.');
+  });
+
+  describe('Category Management', () => {
+    test('should add a new category', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_PATH);
+      config.categories = []; // Ensure categories are empty for this test
+      saveConfig(config, filePath);
+      consoleOutput = []; // Clear console output after saving config
+
+      // Simulate category add action
+      handleCategoryAddAction('NewCategory', TEST_CONFIG_PATH);
+
+      expect(consoleOutput).toContain(`Category 'NewCategory' added.`);
+
+      const loadedConfig = loadConfig(filePath).config;
+      expect(loadedConfig.categories).toContain('NewCategory');
+    });
+
+    test('should not add a duplicate category', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_PATH);
+      config.categories = ['ExistingCategory'];
+      saveConfig(config, filePath);
+      consoleOutput = [];
+
+      // Simulate category add action
+      handleCategoryAddAction('ExistingCategory', TEST_CONFIG_PATH);
+
+      expect(consoleOutput).toContain(`Category 'ExistingCategory' already exists.`);
+      const loadedConfig = loadConfig(filePath).config;
+      expect(loadedConfig.categories).toHaveLength(1);
+    });
+
+    test('should edit an existing category', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_PATH);
+      config.categories = ['OldCategory'];
+      saveConfig(config, filePath);
+      consoleOutput = [];
+
+      // Simulate category edit action
+      handleCategoryEditAction('OldCategory', 'UpdatedCategory', TEST_CONFIG_PATH);
+
+      expect(consoleOutput).toContain(`Category 'OldCategory' renamed to 'UpdatedCategory'.`);
+
+      const loadedConfig = loadConfig(filePath).config;
+      expect(loadedConfig.categories).toContain('UpdatedCategory');
+      expect(loadedConfig.categories).not.toContain('OldCategory');
+    });
+
+    test('should not edit a non-existent category', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_PATH);
+      config.categories = ['ExistingCategory'];
+      saveConfig(config, filePath);
+      consoleOutput = [];
+
+      // Simulate category edit action
+      handleCategoryEditAction('NonExistentCategory', 'UpdatedCategory', TEST_CONFIG_PATH);
+
+      expect(consoleOutput).toContain(`Category 'NonExistentCategory' not found.`);
+      const loadedConfig = loadConfig(filePath).config;
+      expect(loadedConfig.categories).toHaveLength(1);
+      expect(loadedConfig.categories).toContain('ExistingCategory');
+    });
+
+    test('should delete a category', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_PATH);
+      config.categories = ['CategoryToDelete', 'AnotherCategory'];
+      saveConfig(config, filePath);
+      consoleOutput = [];
+
+      // Simulate category delete action
+      handleCategoryDeleteAction('CategoryToDelete', TEST_CONFIG_PATH);
+
+      expect(consoleOutput).toContain(`Category 'CategoryToDelete' deleted.`);
+
+      const loadedConfig = loadConfig(filePath).config;
+      expect(loadedConfig.categories).not.toContain('CategoryToDelete');
+      expect(loadedConfig.categories).toHaveLength(1);
+    });
+
+    test('should not delete a non-existent category', () => {
+      const { config, filePath } = loadConfig(TEST_CONFIG_PATH);
+      config.categories = ['ExistingCategory'];
+      saveConfig(config, filePath);
+      consoleOutput = [];
+
+      // Simulate category delete action
+      handleCategoryDeleteAction('NonExistentCategory', TEST_CONFIG_PATH);
+
+      expect(consoleOutput).toContain(`Category 'NonExistentCategory' not found.`);
+      const loadedConfig = loadConfig(filePath).config;
+      expect(loadedConfig.categories).toHaveLength(1);
+      expect(loadedConfig.categories).toContain('ExistingCategory');
+    });
   });
 });

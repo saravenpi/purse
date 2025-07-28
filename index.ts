@@ -24,10 +24,10 @@ program.on('--help', () => {
 // This is a common pattern for global options that affect command setup
 program.parse(process.argv);
 const options = program.opts(); // Get options from the initial parse
-const config: Config = loadConfig(options.config);
+const { config, filePath: configFilePath } = loadConfig(options.config);
 
-// Add all commands, passing the loaded config
-getAllCommands(config).forEach(command => program.addCommand(command));
+// Add all commands, passing the loaded config and its file path
+getAllCommands(config, configFilePath).forEach(command => program.addCommand(command));
 
 // Now, parse the full arguments, including subcommands and their options
 // This second parse is crucial for subcommands to be recognized

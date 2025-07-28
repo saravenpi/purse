@@ -1,20 +1,19 @@
 import { Command } from 'commander';
 import { getTransactions } from '../data';
-import { loadConfig } from '../config';
+import { Config } from '../config';
 
 /**
  * Creates the 'list' command for listing all transactions.
+ * @param {Config} config - The configuration object.
  * @returns {Command} The Commander command object.
  */
-export function createListCommand(): Command {
+export function createListCommand(config: Config): Command {
   const listCommand = new Command();
 
   listCommand
     .name('list')
     .description('List all transactions')
-    .action((options, command) => {
-      const globalOptions = command.parent.opts();
-      const config = loadConfig(globalOptions.config);
+    .action(() => {
       const dbPath = config.database?.path || '~/.purse_data.json';
       const transactions = getTransactions(dbPath);
       const currencySymbol = config.display?.currencySymbol || '$';

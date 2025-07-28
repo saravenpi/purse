@@ -4,3 +4,9 @@ database:
 display:
   currencySymbol: '€'
   dateFormat: 'fr-FR'
+
+categories:
+  - Food
+  - Transport
+  - Salary
+  - Rent

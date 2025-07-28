@@ -26,6 +26,18 @@ To check your current balance:
 purse balance
 ```
 
+To set a new balance (clears all existing transactions):
+
+```bash
+purse set-balance 1000
+```
+
+To update the balance (adds a transaction to adjust the balance):
+
+```bash
+purse update-balance 500 --description "Bonus Income" --category "Salary"
+```
+
 ### Interactive Mode
 
 To start the interactive mode, run:
@@ -77,6 +89,14 @@ database:
 display:
   currencySymbol: '€'
   dateFormat: 'fr-FR' # e.g., 'en-US', 'en-GB', 'fr-FR'
+
+categories:
+  - Food
+  - Transport
+  - Salary
+  - Rent
+  - Utilities
+  - Entertainment
 ```
 
 An example configuration file `example.yml` is provided in the project root for reference.

@@ -1,25 +1,25 @@
 import { Command } from 'commander';
 import inquirer from 'inquirer';
 import { addTransaction, getTransactions } from '../data';
-import { loadConfig } from '../config';
+import { Config } from '../config';
 
 /**
  * Creates the 'interactive' command for an interactive CLI interface.
+ * @param {Config} config - The configuration object.
  * @returns {Command} The Commander command object.
  */
-export function createInteractiveCommand(): Command {
+export function createInteractiveCommand(config: Config): Command {
   const interactiveCommand = new Command();
 
   interactiveCommand
     .name('interactive')
     .alias('i')
     .description('Start an interactive CLI session')
-    .action(async (options, command) => {
-      const globalOptions = command.parent.opts();
-      const config = loadConfig(globalOptions.config);
+    .action(async () => {
       const dbPath = config.database?.path || '~/.purse_data.json';
       const currencySymbol = config.display?.currencySymbol || '$';
       const dateFormat = config.display?.dateFormat || 'en-US';
+      const categories = config.categories || [];
 
       console.log('Starting interactive session...');
 
@@ -49,12 +49,13 @@ export function createInteractiveCommand(): Command {
                 message: 'Enter description:',
               },
               {
-                type: 'input',
+                type: categories.length > 0 ? 'list' : 'input',
                 name: 'category',
                 message: 'Enter category (optional):',
+                choices: categories.length > 0 ? [...categories, 'Other'] : undefined,
               },
             ]);
-            addTransaction(dbPath, parseFloat(addAnswers.amount), addAnswers.description, addAnswers.category);
+            addTransaction(dbPath, parseFloat(addAnswers.amount), addAnswers.description, addAnswers.category === 'Other' ? await inquirer.prompt({ type: 'input', name: 'newCategory', message: 'Enter new category:' }).then(a => a.newCategory) : addAnswers.category);
             break;
           case 'List Transactions':
             const transactions = getTransactions(dbPath);

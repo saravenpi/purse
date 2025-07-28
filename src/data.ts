@@ -5,7 +5,7 @@ interface Transaction {
   amount: number;
   description: string;
   date: string;
-  category?: string; // New field
+  category?: string;
 }
 
 interface PurseData {
@@ -77,4 +77,13 @@ export function addTransaction(filePath: string, amount: number, description: st
 export function getTransactions(filePath: string): Transaction[] {
   const data = readData(filePath);
   return data.transactions;
+}
+
+/**
+ * Clears all transactions from the data file.
+ * @param {string} filePath - The path to the JSON data file.
+ */
+export function clearTransactions(filePath: string): void {
+  writeData(filePath, { transactions: [] });
+  console.log('All transactions cleared.');
 }

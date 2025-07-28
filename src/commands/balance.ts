@@ -1,20 +1,19 @@
 import { Command } from 'commander';
 import { getTransactions } from '../data';
-import { loadConfig } from '../config';
+import { Config } from '../config';
 
 /**
  * Creates the 'balance' command for displaying the current balance.
+ * @param {Config} config - The configuration object.
  * @returns {Command} The Commander command object.
  */
-export function createBalanceCommand(): Command {
+export function createBalanceCommand(config: Config): Command {
   const balanceCommand = new Command();
 
   balanceCommand
     .name('balance')
     .description('Display the current balance')
-    .action((options, command) => {
-      const globalOptions = command.parent.opts();
-      const config = loadConfig(globalOptions.config);
+    .action(() => {
       const dbPath = config.database?.path || '~/.purse_data.json';
       const currencySymbol = config.display?.currencySymbol || '$';
       const transactions = getTransactions(dbPath);

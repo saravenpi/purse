@@ -24,6 +24,12 @@
       "amount": 50,
       "description": "Test Expense",
       "date": "2025-07-28T01:15:07.401Z"
+    },
+    {
+      "amount": 12,
+      "description": "Discord Nitro",
+      "date": "2025-07-28T01:34:50.219Z",
+      "category": "internet"
     }
   ]
 }

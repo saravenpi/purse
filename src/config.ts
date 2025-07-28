@@ -10,6 +10,7 @@ export interface Config {
     currencySymbol?: string;
     dateFormat?: string;
   };
+  categories?: string[];
 }
 
 /**

@@ -22,11 +22,13 @@ export function createSavingsCommand(): Command {
     .option('-g, --goal <name:target:priority>', 'Set a savings goal (e.g., "Emergency Fund:10000:high")')
     .option('-r, --remove-goal <name>', 'Remove a savings goal')
     .option('-l, --list-goals', 'List all savings goals')
-    .option('-s, --status', 'Show savings status and statistics')
     .action((options, command) => {
       const { config, filePath } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
-      const currencySymbol = config.display?.currencySymbol || '$';
+      const currencySymbol = config.display?.currencySymbol || '
+
+  return savingsCommand;
+};
 
       if (options.add) {
         if (options.add <= 0) {
@@ -108,34 +110,30 @@ export function createSavingsCommand(): Command {
         return;
       }
 
-      if (options.status) {
-        const stats = getSavingsStats(dbPath);
-        const goals = config.savings?.goals || [];
+      // If no options are provided, show savings status by default
+      const stats = getSavingsStats(dbPath);
+      const goals = config.savings?.goals || [];
 
-        console.log(chalk.bold('\n💰 Savings Overview\n'));
-        
-        console.log(`Total Savings: ${chalk.green(`${currencySymbol}${stats.totalSavings.toFixed(2)}`)}`);
-        console.log(`This Month: ${currencySymbol}${stats.thisMonthSavings.toFixed(2)}`);
-        console.log(`Last Month: ${currencySymbol}${stats.lastMonthSavings.toFixed(2)}`);
-        console.log(`Growth Rate: ${stats.savingsGrowthRate >= 0 ? chalk.green(`+${stats.savingsGrowthRate.toFixed(1)}%`) : chalk.red(`${stats.savingsGrowthRate.toFixed(1)}%`)}`);
-        console.log(`Transactions: ${stats.savingsTransactionCount}`);
-        console.log(`Average: ${currencySymbol}${stats.averageSavingsTransaction.toFixed(2)}`);
+      console.log(chalk.bold('\n💰 Savings Overview\n'));
+      
+      console.log(`Total Savings: ${chalk.green(`${currencySymbol}${stats.totalSavings.toFixed(2)}`)}`);
+      console.log(`This Month: ${currencySymbol}${stats.thisMonthSavings.toFixed(2)}`);
+      console.log(`Last Month: ${currencySymbol}${stats.lastMonthSavings.toFixed(2)}`);
+      console.log(`Growth Rate: ${stats.savingsGrowthRate >= 0 ? chalk.green(`+${stats.savingsGrowthRate.toFixed(1)}%`) : chalk.red(`${stats.savingsGrowthRate.toFixed(1)}%`)}`);
+      console.log(`Transactions: ${stats.savingsTransactionCount}`);
+      console.log(`Average: ${currencySymbol}${stats.averageSavingsTransaction.toFixed(2)}`);
 
-        if (goals.length > 0) {
-          console.log(chalk.bold('\n🎯 Goals Progress\n'));
-          goals.forEach((goal) => {
-            const percentage = goal.target > 0 ? (stats.totalSavings / goal.target) * 100 : 0;
-            const progressBar = '█'.repeat(Math.min(Math.round(percentage / 5), 20));
-            const emptyBar = '░'.repeat(Math.max(0, 20 - Math.round(percentage / 5)));
-            const statusColor = percentage >= 100 ? chalk.green : percentage >= 75 ? chalk.yellow : chalk.red;
-            
-            console.log(`${goal.name.padEnd(20)} ${statusColor(progressBar)}${chalk.gray(emptyBar)} ${percentage.toFixed(1)}%`);
-          });
-        }
-        return;
+      if (goals.length > 0) {
+        console.log(chalk.bold('\n🎯 Goals Progress\n'));
+        goals.forEach((goal) => {
+          const percentage = goal.target > 0 ? (stats.totalSavings / goal.target) * 100 : 0;
+          const progressBar = '█'.repeat(Math.min(Math.round(percentage / 5), 20));
+          const emptyBar = '░'.repeat(Math.max(0, 20 - Math.round(percentage / 5)));
+          const statusColor = percentage >= 100 ? chalk.green : percentage >= 75 ? chalk.yellow : chalk.red;
+          
+          console.log(`${goal.name.padEnd(20)} ${statusColor(progressBar)}${chalk.gray(emptyBar)} ${percentage.toFixed(1)}%`);
+        });
       }
-
-      console.log(chalk.yellow('Use --help to see available options'));
     });
 
   return savingsCommand;

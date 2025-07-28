@@ -37,3 +37,11 @@ To run the CLI in production mode:
 ```bash
 bun run start
 ```
+
+### Building
+
+To build the `purse` binary:
+
+```bash
+bun run build
+```

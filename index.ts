@@ -9,7 +9,7 @@ const program = new Command();
 program
   .name('purse')
   .description('A simple CLI tool to track your finances.')
-  .version('0.0.1')
+  .version('0.0.2')
   .usage('[command] [options]')
   .option('-c, --config <path>', 'Path to the configuration file (default: ~/.purse.yml)');
 

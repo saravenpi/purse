@@ -157,7 +157,9 @@ async function manageBalance(config: Config) {
   while (managingBalance) {
     try {
       const currentBalance = getTransactions(dbPath).reduce((sum, tx) => sum + tx.amount, 0);
-      console.log(`\nCurrent Balance: ${currencySymbol}${currentBalance.toFixed(2)}\n`);
+      const formattedBalance = ` ${currencySymbol}${currentBalance.toFixed(2)} `;
+      const balanceWithBackground = currentBalance === 0 ? chalk.black.bgWhite(formattedBalance) : currentBalance > 0 ? chalk.black.bgGreen(formattedBalance) : chalk.white.bgRed(formattedBalance);
+      console.log(`\nCurrent Balance: ${balanceWithBackground}\n`);
 
       const { action } = await inquirer.prompt({
         type: 'list',
@@ -242,9 +244,7 @@ async function manageGraphs(config: Config) {
         message: 'View Graphs:',
         choices: [
           '📈 Balance Evolution',
-          new inquirer.Separator(),
           '📊 Category Distribution',
-          new inquirer.Separator(),
           '↩️ Back to Main Menu',
         ],
       });
@@ -268,7 +268,7 @@ async function manageGraphs(config: Config) {
 
           const formatBalance = (amount: number) => {
             const formatted = ` ${currencySymbol}${amount.toFixed(2)} `;
-            return amount >= 0 ? chalk.black.bgGreen(formatted) : chalk.white.bgRed(formatted);
+            return amount === 0 ? chalk.black.bgWhite(formatted) : amount > 0 ? chalk.black.bgGreen(formatted) : chalk.white.bgRed(formatted);
           };
 
           console.log('\n📈 Balance Evolution Over Time\n');
@@ -318,7 +318,7 @@ async function manageGraphs(config: Config) {
 
           const formatAmount = (amount: number) => {
             const formatted = ` ${amount >= 0 ? '+' : '-'}${currencySymbol}${Math.abs(amount).toFixed(2)} `;
-            return amount >= 0 ? chalk.black.bgGreen(formatted) : chalk.white.bgRed(formatted);
+            return amount === 0 ? chalk.black.bgWhite(formatted) : amount > 0 ? chalk.black.bgGreen(formatted) : chalk.white.bgRed(formatted);
           };
 
           sortedCategories.forEach(([category, stats]) => {

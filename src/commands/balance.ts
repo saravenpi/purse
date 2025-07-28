@@ -20,7 +20,7 @@ export function createBalanceCommand(): Command {
       const transactions = getTransactions(dbPath);
       const balance = transactions.reduce((sum, tx) => sum + tx.amount, 0);
       const formattedBalance = ` ${currencySymbol}${balance.toFixed(2)} `;
-      const balanceWithBackground = balance >= 0 ? chalk.black.bgGreen(formattedBalance) : chalk.white.bgRed(formattedBalance);
+      const balanceWithBackground = balance === 0 ? chalk.black.bgWhite(formattedBalance) : balance > 0 ? chalk.black.bgGreen(formattedBalance) : chalk.white.bgRed(formattedBalance);
       console.log(`Current Balance: ${balanceWithBackground}`);
     });
 

@@ -22,6 +22,7 @@ export function createSavingsCommand(): Command {
     .option('-g, --goal <name:target:priority>', 'Set a savings goal (e.g., "Emergency Fund:10000:high")')
     .option('-r, --remove-goal <name>', 'Remove a savings goal')
     .option('-l, --list-goals', 'List all savings goals')
+    
     .action((options, command) => {
       const { config, filePath } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
@@ -91,7 +92,7 @@ export function createSavingsCommand(): Command {
           const remaining = Math.max(0, goal.target - progress);
           
           const priorityColor = goal.priority === 'high' ? chalk.red : 
-                               chalk.priority === 'medium' ? chalk.yellow : chalk.blue;
+                               goal.priority === 'medium' ? chalk.yellow : chalk.blue;
           const progressColor = percentage >= 100 ? chalk.green : 
                                percentage >= 75 ? chalk.yellow : chalk.red;
           
@@ -131,6 +132,8 @@ export function createSavingsCommand(): Command {
           console.log(`${goal.name.padEnd(20)} ${statusColor(progressBar)}${chalk.gray(emptyBar)} ${percentage.toFixed(1)}%`);
         });
       }
+
+      
     });
 
   return savingsCommand;

@@ -1,0 +1,2 @@
+database:
+  path: ./my_purse_data.json

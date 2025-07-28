@@ -18,6 +18,7 @@
   "scripts": {
     "dev": "bun --watch index.ts",
     "start": "bun index.ts",
-    "build": "bun build index.ts --compile --outfile purse"
+    "build": "bun build index.ts --compile --outfile purse",
+    "test": "bun test"
   }
 }

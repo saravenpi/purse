@@ -68,3 +68,13 @@ Example `~/.purse.yml`:
 database:
   path: ~/.purse_data.json
 ```
+
+An example configuration file `example.yml` is provided in the project root for reference.
+
+### Testing
+
+To run the test suite:
+
+```bash
+bun test
+```

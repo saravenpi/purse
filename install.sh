@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "🚀 Installing purse..."
+
 set -e
 
 # Check if purse is already installed

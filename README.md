@@ -23,3 +23,17 @@ purse interactive
 # or
 purse -i
 ```
+
+### Development
+
+To run the CLI in development mode with hot reloading:
+
+```bash
+bun run dev
+```
+
+To run the CLI in production mode:
+
+```bash
+bun run start
+```

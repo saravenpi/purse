@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "🚀 Installing purse..."
+
 set -e
 
 # Create temporary directory for installation

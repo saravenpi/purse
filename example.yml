@@ -1,5 +1,5 @@
 database:
-  path: ./my_purse_data.json
+  path: ~/.purse.json
 
 display:
   currencySymbol: '€'

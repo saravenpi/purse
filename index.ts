@@ -2,6 +2,9 @@
 
 import { Command } from 'commander';
 
+import { Command } from 'commander';
+import { getAllCommands } from './src/commands';
+
 const program = new Command();
 
 program
@@ -17,11 +20,7 @@ program.on('--help', () => {
   console.log('  $ purse list');
 });
 
-// This is a placeholder for future commands
-program
-    .command('add', 'Add a new transaction', { executableFile: 'src/commands/add.ts' })
-    .command('list', 'List all transactions', { executableFile: 'src/commands/list.ts' });
-
+getAllCommands().forEach(command => program.addCommand(command));
 
 program.parse(process.argv);
 

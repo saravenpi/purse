@@ -1,14 +1,18 @@
-#!/usr/bin/env bun
-
 import { Command } from 'commander';
 
-const program = new Command();
+/**
+ * Creates the 'list' command for listing all transactions.
+ * @returns {Command} The Commander command object.
+ */
+export function createListCommand(): Command {
+  const listCommand = new Command();
 
-program
-  .name('list')
-  .description('List all transactions')
-  .action(() => {
-    console.log('Listing all transactions:');
-  });
+  listCommand
+    .name('list')
+    .description('List all transactions')
+    .action(() => {
+      console.log('Listing all transactions:');
+    });
 
-program.parse(process.argv);
+  return listCommand;
+}

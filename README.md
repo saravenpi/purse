@@ -13,3 +13,13 @@ curl -fsSL https://raw.githubusercontent.com/your-username/purse/main/install.sh
 ```bash
 purse --help
 ```
+
+### Interactive Mode
+
+To start the interactive mode, run:
+
+```bash
+purse interactive
+# or
+purse -i
+```

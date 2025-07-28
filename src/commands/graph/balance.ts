@@ -37,10 +37,13 @@ export function createGraphBalanceCommand(): Command {
       });
 
       console.log('\n📈 Balance Evolution Over Time\n');
+      const maxBalance = Math.max(...balanceData.map(Math.abs));
+      const maxLength = `${currencySymbol}${maxBalance.toFixed(2)}`.length;
+      
       console.log(plot(balanceData, {
         height: 15,
         width: 60,
-        format: (x) => `${currencySymbol}${x.toFixed(2)}`
+        format: (x) => `${currencySymbol}${x.toFixed(2)}`.padStart(maxLength)
       }));
 
       const formatBalance = (amount: number) => {

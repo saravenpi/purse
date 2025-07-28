@@ -25,7 +25,7 @@ export function createInteractiveCommand(config: any): Command {
             type: 'list',
             name: 'action',
             message: 'What do you want to do?',
-            choices: ['Add Transaction', 'List Transactions', 'Exit'],
+            choices: ['Add Transaction', 'List Transactions', 'Check Balance', 'Exit'],
           },
         ]);
 
@@ -56,6 +56,11 @@ export function createInteractiveCommand(config: any): Command {
                 console.log(`  Date: ${new Date(tx.date).toLocaleString()}, Amount: ${tx.amount}, Description: ${tx.description}`);
               });
             }
+            break;
+          break;
+          case 'Check Balance':
+            const balance = getTransactions(dbPath).reduce((sum, tx) => sum + tx.amount, 0);
+            console.log(`Current Balance: ${balance.toFixed(2)}`);
             break;
           case 'Exit':
             console.log('Exiting interactive session.');

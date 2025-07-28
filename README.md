@@ -14,6 +14,12 @@ curl -fsSL https://raw.githubusercontent.com/your-username/purse/main/install.sh
 purse --help
 ```
 
+To check your current balance:
+
+```bash
+purse balance
+```
+
 ### Interactive Mode
 
 To start the interactive mode, run:

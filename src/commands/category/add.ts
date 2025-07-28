@@ -13,7 +13,9 @@ export function createCategoryAddCommand(): Command {
     .description('Add a new category')
     .argument('<name>', 'The name of the category to add')
     .action((name, command) => {
-      const { config, filePath } = loadConfig(command.parent.parent.opts().config);
+      const { config, filePath } = loadConfig(
+        command.parent.parent.opts().config
+      );
 
       if (!config.categories) {
         config.categories = [];

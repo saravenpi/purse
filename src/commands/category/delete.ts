@@ -22,7 +22,7 @@ export function createCategoryDeleteCommand(): Command {
       }
 
       const initialLength = config.categories.length;
-      config.categories = config.categories.filter(cat => cat !== name);
+      config.categories = config.categories.filter((cat) => cat !== name);
 
       if (config.categories.length < initialLength) {
         saveConfig(config, filePath);

@@ -62,11 +62,10 @@ purse -i
 
 The interactive mode now provides consolidated options for managing your finances:
 
-*   **📝 Manage Transactions**: Add, list, edit, or delete individual transactions (both income and expenses).
-*   **💰 Manage Balance**: View your current balance, set a new balance, or update it with income/expenses.
-*   **📂 Manage Categories**: Add, edit, or delete transaction categories.
-*   **📊 Reports & Analytics**: Visualize your financial data with interactive charts, summaries, and export financial reports.
-
+- **📝 Manage Transactions**: Add, list, edit, or delete individual transactions (both income and expenses).
+- **💰 Manage Balance**: View your current balance, set a new balance, or update it with income/expenses.
+- **📂 Manage Categories**: Add, edit, or delete transaction categories.
+- **📊 Reports & Analytics**: Visualize your financial data with interactive charts, summaries, and export financial reports.
 
 ### Development
 
@@ -158,6 +157,7 @@ purse graph b
 ```
 
 This command displays:
+
 - A line chart showing balance changes over time
 - Date range of transactions
 - Starting and current balance (color-coded: green for positive, red for negative)
@@ -174,6 +174,7 @@ purse graph c
 ```
 
 This command shows:
+
 - Visual bar chart of category distribution
 - Detailed summary for each category (total, count, income, expenses, average)
 - Overall financial summary with totals and net amount
@@ -186,6 +187,7 @@ Visualize category spending with a simple bar chart:
 Available in interactive mode under "📊 Reports & Analytics" → "📊 Category Bar Chart".
 
 This feature displays:
+
 - Horizontal bar chart showing category totals
 - Category names with transaction counts
 - Summary statistics
@@ -197,6 +199,7 @@ Export comprehensive financial reports in Markdown format:
 Available in interactive mode under "📊 Reports & Analytics" → "📋 Export Financial Report (MD)".
 
 The exported report includes:
+
 - Financial summary with key metrics
 - Category breakdown with detailed statistics
 - Recent transactions table

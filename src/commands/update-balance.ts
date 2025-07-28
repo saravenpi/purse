@@ -12,14 +12,30 @@ export function createUpdateBalanceCommand(): Command {
   updateBalanceCommand
     .name('update-balance')
     .description('Adjust the current balance by adding a transaction')
-    .argument('<amount>', 'The amount to adjust the balance by (positive for income, negative for expense)')
-    .option('-d, --description <description>', 'Description for the balance adjustment', 'Balance Adjustment')
-    .option('-c, --category <category>', 'Category for the balance adjustment', 'System')
+    .argument(
+      '<amount>',
+      'The amount to adjust the balance by (positive for income, negative for expense)'
+    )
+    .option(
+      '-d, --description <description>',
+      'Description for the balance adjustment',
+      'Balance Adjustment'
+    )
+    .option(
+      '-c, --category <category>',
+      'Category for the balance adjustment',
+      'System'
+    )
     .action((amount, options, command) => {
       const { config } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
 
-      addTransaction(dbPath, parseFloat(amount), options.description, options.category);
+      addTransaction(
+        dbPath,
+        parseFloat(amount),
+        options.description,
+        options.category
+      );
       console.log(`Balance adjusted by ${parseFloat(amount).toFixed(2)}.`);
     });
 

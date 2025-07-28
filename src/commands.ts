@@ -9,6 +9,7 @@ import { createDeleteCommand } from './commands/delete';
 import { createEditCommand } from './commands/edit';
 import { createCategoryCommand } from './commands/category';
 import { createGraphCommand } from './commands/graph';
+import { createBudgetCommand } from './commands/budget';
 
 /**
  * Returns an array of all commands for the purse CLI.
@@ -25,6 +26,7 @@ export function getAllCommands(): Command[] {
     createDeleteCommand(),
     createEditCommand(),
     createCategoryCommand(),
-    createGraphCommand()
+    createGraphCommand(),
+    createBudgetCommand(),
   ];
 }

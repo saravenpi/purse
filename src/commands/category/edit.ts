@@ -14,7 +14,9 @@ export function createCategoryEditCommand(): Command {
     .argument('<oldName>', 'The current name of the category')
     .argument('<newName>', 'The new name for the category')
     .action((oldName, newName, command) => {
-      const { config, filePath } = loadConfig(command.parent.parent.opts().config);
+      const { config, filePath } = loadConfig(
+        command.parent.parent.opts().config
+      );
 
       if (!config.categories) {
         console.log('No categories defined.');

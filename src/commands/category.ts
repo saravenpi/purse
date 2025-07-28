@@ -10,9 +10,7 @@ import { createCategoryDeleteCommand } from './category/delete';
 export function createCategoryCommand(): Command {
   const categoryCommand = new Command();
 
-  categoryCommand
-    .name('category')
-    .description('Manage categories');
+  categoryCommand.name('category').description('Manage categories');
 
   categoryCommand.addCommand(createCategoryAddCommand());
   categoryCommand.addCommand(createCategoryEditCommand());

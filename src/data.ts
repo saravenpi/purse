@@ -55,7 +55,12 @@ function writeData(filePath: string, data: PurseData): void {
  * @param {string} description - The description of the transaction.
  * @param {string} [category] - The category of the transaction.
  */
-export function addTransaction(filePath: string, amount: number, description: string, category?: string): void {
+export function addTransaction(
+  filePath: string,
+  amount: number,
+  description: string,
+  category?: string
+): void {
   const data = readData(filePath);
   const newTransaction: Transaction = {
     id: Date.now().toString(), // Simple unique ID
@@ -98,7 +103,7 @@ export function clearTransactions(filePath: string): void {
 export function deleteTransaction(filePath: string, id: string): void {
   const data = readData(filePath);
   const initialLength = data.transactions.length;
-  data.transactions = data.transactions.filter(tx => tx.id !== id);
+  data.transactions = data.transactions.filter((tx) => tx.id !== id);
   if (data.transactions.length < initialLength) {
     writeData(filePath, data);
     console.log(`Transaction with ID ${id} deleted successfully.`);
@@ -113,14 +118,75 @@ export function deleteTransaction(filePath: string, id: string): void {
  * @param {string} id - The ID of the transaction to edit.
  * @param {Partial<Transaction>} updates - The updates to apply to the transaction.
  */
-export function editTransaction(filePath: string, id: string, updates: Partial<Transaction>): void {
+export function editTransaction(
+  filePath: string,
+  id: string,
+  updates: Partial<Omit<Transaction, 'id'>>
+): void {
   const data = readData(filePath);
-  const index = data.transactions.findIndex(tx => tx.id === id);
+  const index = data.transactions.findIndex((tx) => tx.id === id);
   if (index !== -1) {
-    data.transactions[index] = { ...data.transactions[index], ...updates };
+    const currentTransaction = data.transactions[index]!;
+    data.transactions[index] = {
+      id: currentTransaction.id,
+      amount: updates.amount ?? currentTransaction.amount,
+      description: updates.description ?? currentTransaction.description,
+      date: updates.date ?? currentTransaction.date,
+      category: updates.category ?? currentTransaction.category,
+    };
     writeData(filePath, data);
     console.log(`Transaction with ID ${id} updated successfully.`);
   } else {
     console.log(`Transaction with ID ${id} not found.`);
   }
+}
+
+export interface BudgetUsage {
+  category: string;
+  budget: number;
+  spent: number;
+  remaining: number;
+  percentage: number;
+}
+
+/**
+ * Gets budget usage for all categories in the current cycle.
+ * @param {string} filePath - The path to the JSON data file.
+ * @param {Date} cycleStart - The start date of the budget cycle.
+ * @param {Date} cycleEnd - The end date of the budget cycle.
+ * @param {CategoryBudget[]} categoryBudgets - The category budgets configuration.
+ * @returns {BudgetUsage[]} Array of budget usage information.
+ */
+export function getBudgetUsage(
+  filePath: string,
+  cycleStart: Date,
+  cycleEnd: Date,
+  categoryBudgets: { category: string; monthlyBudget: number }[]
+): BudgetUsage[] {
+  const transactions = getTransactions(filePath);
+  const cycleTransactions = transactions.filter((tx) => {
+    const txDate = new Date(tx.date);
+    return txDate >= cycleStart && txDate <= cycleEnd && tx.amount < 0;
+  });
+
+  const categorySpending: { [key: string]: number } = {};
+
+  cycleTransactions.forEach((tx) => {
+    const category = tx.category || 'Uncategorized';
+    categorySpending[category] = (categorySpending[category] || 0) + Math.abs(tx.amount);
+  });
+
+  return categoryBudgets.map((budgetConfig) => {
+    const spent = categorySpending[budgetConfig.category] || 0;
+    const remaining = Math.max(0, budgetConfig.monthlyBudget - spent);
+    const percentage = budgetConfig.monthlyBudget > 0 ? (spent / budgetConfig.monthlyBudget) * 100 : 0;
+
+    return {
+      category: budgetConfig.category,
+      budget: budgetConfig.monthlyBudget,
+      spent,
+      remaining,
+      percentage,
+    };
+  });
 }

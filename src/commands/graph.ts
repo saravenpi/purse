@@ -9,9 +9,7 @@ import { createGraphCategoriesCommand } from './graph/categories';
 export function createGraphCommand(): Command {
   const graphCommand = new Command();
 
-  graphCommand
-    .name('graph')
-    .description('Generate graphs and visualizations');
+  graphCommand.name('graph').description('Generate graphs and visualizations');
 
   graphCommand.addCommand(createGraphBalanceCommand());
   graphCommand.addCommand(createGraphCategoriesCommand());

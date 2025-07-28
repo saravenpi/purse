@@ -14,19 +14,26 @@ export function createEditCommand(): Command {
     .description('Edit an existing transaction by its ID')
     .argument('<id>', 'The ID of the transaction to edit')
     .option('-a, --amount <amount>', 'New amount for the transaction')
-    .option('-d, --description <description>', 'New description for the transaction')
+    .option(
+      '-d, --description <description>',
+      'New description for the transaction'
+    )
     .option('-c, --category <category>', 'New category for the transaction')
     .action((id, options, command) => {
       const { config } = loadConfig(command.parent.opts().config);
       const dbPath = config.database?.path || '~/.purse_data.json';
 
       const updates: { [key: string]: any } = {};
-      if (options.amount !== undefined) updates.amount = parseFloat(options.amount);
-      if (options.description !== undefined) updates.description = options.description;
+      if (options.amount !== undefined)
+        updates.amount = parseFloat(options.amount);
+      if (options.description !== undefined)
+        updates.description = options.description;
       if (options.category !== undefined) updates.category = options.category;
 
       if (Object.keys(updates).length === 0) {
-        console.log('No updates provided. Use --amount, --description, or --category.');
+        console.log(
+          'No updates provided. Use --amount, --description, or --category.'
+        );
         return;
       }
 

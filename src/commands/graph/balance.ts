@@ -22,16 +22,18 @@ export function createGraphBalanceCommand(): Command {
       const dateFormat = config.display?.dateFormat || 'en-US';
 
       const transactions = getTransactions(dbPath);
-      
+
       if (transactions.length === 0) {
         console.log('No transactions found.');
         return;
       }
 
-      const sortedTransactions = transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      
+      const sortedTransactions = transactions.sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+
       let runningBalance = 0;
-      const balanceData = sortedTransactions.map(tx => {
+      const balanceData = sortedTransactions.map((tx) => {
         runningBalance += tx.amount;
         return runningBalance;
       });
@@ -39,20 +41,28 @@ export function createGraphBalanceCommand(): Command {
       console.log('\n📈 Balance Evolution Over Time\n');
       const maxBalance = Math.max(...balanceData.map(Math.abs));
       const maxLength = `${currencySymbol}${maxBalance.toFixed(2)}`.length;
-      
-      console.log(plot(balanceData, {
-        height: 15,
-        width: 60,
-        format: (x) => `${currencySymbol}${x.toFixed(2)}`.padStart(maxLength)
-      }));
+
+      console.log(
+        plot(balanceData, {
+          height: 15,
+          format: (x: number) =>
+            `${currencySymbol}${x.toFixed(2)}`.padStart(maxLength),
+        })
+      );
 
       const formatBalance = (amount: number) => {
         const formatted = ` ${currencySymbol}${amount.toFixed(2)} `;
-        return amount >= 0 ? chalk.black.bgGreen(formatted) : chalk.white.bgRed(formatted);
+        return amount >= 0
+          ? chalk.black.bgGreen(formatted)
+          : chalk.white.bgRed(formatted);
       };
 
-      console.log(`\nDate Range: ${new Date(sortedTransactions[0].date).toLocaleDateString(dateFormat)} - ${new Date(sortedTransactions[sortedTransactions.length - 1].date).toLocaleDateString(dateFormat)}`);
-      console.log(`Starting Balance: ${formatBalance(sortedTransactions[0].amount)}`);
+      console.log(
+        `\nDate Range: ${new Date(sortedTransactions[0]?.date ?? Date.now()).toLocaleDateString(dateFormat)} - ${new Date(sortedTransactions[sortedTransactions.length - 1]?.date ?? Date.now()).toLocaleDateString(dateFormat)}`
+      );
+      console.log(
+        `Starting Balance: ${formatBalance(sortedTransactions[0]?.amount ?? 0)}`
+      );
       console.log(`Current Balance: ${formatBalance(runningBalance)}`);
       console.log(`Total Transactions: ${transactions.length}`);
     });

@@ -65,6 +65,7 @@ The interactive mode now provides consolidated options for managing your finance
 *   **📝 Manage Transactions**: Add, list, edit, or delete individual transactions (both income and expenses).
 *   **💰 Manage Balance**: View your current balance, set a new balance, or update it with income/expenses.
 *   **📂 Manage Categories**: Add, edit, or delete transaction categories.
+*   **📊 View Graphs**: Visualize your financial data with interactive charts and summaries.
 
 
 ### Development
@@ -141,6 +142,44 @@ To delete a category:
 ```bash
 purse category delete <category-name>
 ```
+
+### Graph Visualizations
+
+Purse includes powerful visualization features to help you understand your financial data:
+
+#### Balance Evolution
+
+View your account balance evolution over time with an ASCII chart:
+
+```bash
+purse graph balance
+# or
+purse graph b
+```
+
+This command displays:
+- A line chart showing balance changes over time
+- Date range of transactions
+- Starting and current balance (color-coded: green for positive, red for negative)
+- Total number of transactions
+
+#### Category Distribution
+
+Analyze spending and income by category:
+
+```bash
+purse graph categories
+# or
+purse graph c
+```
+
+This command shows:
+- Visual bar chart of category distribution
+- Detailed summary for each category (total, count, income, expenses, average)
+- Overall financial summary with totals and net amount
+- Color-coded amounts (green for positive, red for negative)
+
+Both graph commands are also available in interactive mode under "📊 View Graphs".
 
 ### Testing
 

@@ -2,6 +2,21 @@
 
 set -e
 
+# Check if purse is already installed
+PURSE_PATH="$HOME/.local/bin/purse"
+IS_UPDATE=false
+
+if [ -f "$PURSE_PATH" ]; then
+    IS_UPDATE=true
+    echo "🔄 Updating purse to the latest version..."
+    
+    # Get current version if possible
+    CURRENT_VERSION=$("$PURSE_PATH" --version 2>/dev/null || echo "unknown")
+    echo "📦 Current version: $CURRENT_VERSION"
+else
+    echo "📥 Installing purse for the first time..."
+fi
+
 # Create temporary directory for installation
 TEMP_DIR=$(mktemp -d)
 echo "Using temporary directory: $TEMP_DIR"
@@ -48,5 +63,14 @@ fi
 cd "$HOME"
 rm -rf "$TEMP_DIR"
 
-echo "✅ purse installed successfully to $HOME/.local/bin/purse"
-echo "💡 You may need to restart your terminal or run 'source ~/.bashrc' (or ~/.zshrc) to use the 'purse' command"
+if [ "$IS_UPDATE" = true ]; then
+    # Get new version
+    NEW_VERSION=$("$PURSE_PATH" --version 2>/dev/null || echo "unknown")
+    echo "✅ purse updated successfully!"
+    echo "📦 Updated from version $CURRENT_VERSION to $NEW_VERSION"
+else
+    echo "✅ purse installed successfully to $HOME/.local/bin/purse"
+    echo "🎉 Welcome to purse! Your personal finance CLI tool"
+    echo "💡 You may need to restart your terminal or run 'source ~/.bashrc' (or ~/.zshrc) to use the 'purse' command"
+    echo "🚀 Get started with 'purse interactive' or 'purse --help'"
+fi

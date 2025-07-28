@@ -65,7 +65,7 @@ The interactive mode now provides consolidated options for managing your finance
 *   **📝 Manage Transactions**: Add, list, edit, or delete individual transactions (both income and expenses).
 *   **💰 Manage Balance**: View your current balance, set a new balance, or update it with income/expenses.
 *   **📂 Manage Categories**: Add, edit, or delete transaction categories.
-*   **📊 View Graphs**: Visualize your financial data with interactive charts and summaries.
+*   **📊 Reports & Analytics**: Visualize your financial data with interactive charts, summaries, and export financial reports.
 
 
 ### Development
@@ -143,9 +143,9 @@ To delete a category:
 purse category delete <category-name>
 ```
 
-### Graph Visualizations
+### Reports & Analytics
 
-Purse includes powerful visualization features to help you understand your financial data:
+Purse includes powerful visualization and reporting features to help you understand your financial data:
 
 #### Balance Evolution
 
@@ -179,7 +179,31 @@ This command shows:
 - Overall financial summary with totals and net amount
 - Color-coded amounts (green for positive, red for negative)
 
-Both graph commands are also available in interactive mode under "📊 View Graphs".
+#### Category Bar Chart
+
+Visualize category spending with a simple bar chart:
+
+Available in interactive mode under "📊 Reports & Analytics" → "📊 Category Bar Chart".
+
+This feature displays:
+- Horizontal bar chart showing category totals
+- Category names with transaction counts
+- Summary statistics
+
+#### Financial Report Export
+
+Export comprehensive financial reports in Markdown format:
+
+Available in interactive mode under "📊 Reports & Analytics" → "📋 Export Financial Report (MD)".
+
+The exported report includes:
+- Financial summary with key metrics
+- Category breakdown with detailed statistics
+- Recent transactions table
+- Financial health indicators
+- Professional markdown formatting for easy sharing
+
+All visualization and reporting features are available in interactive mode under "📊 Reports & Analytics".
 
 ### Testing
 

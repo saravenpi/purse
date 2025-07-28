@@ -2,6 +2,8 @@ import { Command } from 'commander';
 import inquirer from 'inquirer';
 import { plot } from 'asciichart';
 import chalk from 'chalk';
+import * as fs from 'fs';
+import * as path from 'path';
 import { addTransaction, getTransactions, deleteTransaction, editTransaction, clearTransactions } from '../data';
 import { loadConfig, saveConfig, Config } from '../config';
 
@@ -29,7 +31,7 @@ async function manageTransactions(config: Config, configFilePath: string) {
       const choices = [
         '➕ Add New Transaction',
         new inquirer.Separator(),
-        ...transactionChoices,
+        ...(transactions.length === 0 ? [chalk.gray('No transactions yet. Add your first transaction!')] : transactionChoices),
         new inquirer.Separator(),
         '↩️ Back to Main Menu',
       ];
@@ -165,11 +167,11 @@ async function manageBalance(config: Config) {
         type: 'list',
         name: 'action',
         message: 'Manage Balance:',
-        choices: ['Set Balance', 'Update Balance', '↩️ Back to Main Menu'],
+        choices: ['⚖️ Set Balance', '💱 Update Balance', '↩️ Back to Main Menu'],
       });
 
       switch (action) {
-        case 'Set Balance':
+        case '⚖️ Set Balance':
           try {
             const { amount } = await inquirer.prompt({
               type: 'input',
@@ -184,7 +186,7 @@ async function manageBalance(config: Config) {
             console.log('Operation cancelled.');
           }
           break;
-        case 'Update Balance':
+        case '💱 Update Balance':
           try {
             const { amount, description, category } = await inquirer.prompt([
               {
@@ -226,6 +228,100 @@ async function manageBalance(config: Config) {
 }
 
 /**
+ * Generates a markdown financial report from transactions
+ * @param {any[]} transactions - Array of transactions
+ * @param {Config} config - The configuration object
+ * @returns {string} The markdown formatted report
+ */
+function generateMarkdownReport(transactions: any[], config: Config): string {
+  const currencySymbol = config.display?.currencySymbol || '$';
+  const dateFormat = config.display?.dateFormat || 'en-US';
+  const reportDate = new Date().toLocaleDateString(dateFormat);
+  
+  const sortedTransactions = transactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const balance = transactions.reduce((sum, tx) => sum + tx.amount, 0);
+  
+  // Calculate category statistics
+  const categoryStats: { [key: string]: { total: number; count: number; income: number; expenses: number } } = {};
+  transactions.forEach(tx => {
+    const category = tx.category || 'Uncategorized';
+    if (!categoryStats[category]) {
+      categoryStats[category] = { total: 0, count: 0, income: 0, expenses: 0 };
+    }
+    categoryStats[category].total += tx.amount;
+    categoryStats[category].count += 1;
+    if (tx.amount > 0) {
+      categoryStats[category].income += tx.amount;
+    } else {
+      categoryStats[category].expenses += Math.abs(tx.amount);
+    }
+  });
+
+  const totalIncome = transactions.filter(tx => tx.amount > 0).reduce((sum, tx) => sum + tx.amount, 0);
+  const totalExpenses = Math.abs(transactions.filter(tx => tx.amount < 0).reduce((sum, tx) => sum + tx.amount, 0));
+  const sortedCategories = Object.entries(categoryStats).sort(([,a], [,b]) => Math.abs(b.total) - Math.abs(a.total));
+
+  let markdown = `# Financial Report
+
+**Generated:** ${reportDate}  
+**Report Period:** ${new Date(sortedTransactions[sortedTransactions.length - 1]?.date || Date.now()).toLocaleDateString(dateFormat)} - ${new Date(sortedTransactions[0]?.date || Date.now()).toLocaleDateString(dateFormat)}
+
+## 💰 Financial Summary
+
+| Metric | Amount |
+|--------|--------|
+| **Current Balance** | ${currencySymbol}${balance.toFixed(2)} |
+| **Total Income** | ${currencySymbol}${totalIncome.toFixed(2)} |
+| **Total Expenses** | ${currencySymbol}${totalExpenses.toFixed(2)} |
+| **Net Amount** | ${currencySymbol}${(totalIncome - totalExpenses).toFixed(2)} |
+| **Total Transactions** | ${transactions.length} |
+| **Categories** | ${Object.keys(categoryStats).length} |
+
+## 📊 Categories Overview
+
+| Category | Total | Transactions | Income | Expenses | Average |
+|----------|-------|--------------|--------|----------|---------|
+`;
+
+  sortedCategories.forEach(([category, stats]) => {
+    const avg = stats.total / stats.count;
+    markdown += `| ${category} | ${currencySymbol}${stats.total.toFixed(2)} | ${stats.count} | ${currencySymbol}${stats.income.toFixed(2)} | ${currencySymbol}${stats.expenses.toFixed(2)} | ${currencySymbol}${avg.toFixed(2)} |\n`;
+  });
+
+  markdown += `
+## 📝 Recent Transactions
+
+| Date | Amount | Description | Category |
+|------|--------|-------------|----------|
+`;
+
+  sortedTransactions.slice(0, 20).forEach(tx => {
+    const date = new Date(tx.date).toLocaleDateString(dateFormat);
+    const amount = `${tx.amount >= 0 ? '+' : ''}${currencySymbol}${tx.amount.toFixed(2)}`;
+    const category = tx.category || 'Uncategorized';
+    markdown += `| ${date} | ${amount} | ${tx.description} | ${category} |\n`;
+  });
+
+  if (transactions.length > 20) {
+    markdown += `\n*Showing latest 20 transactions out of ${transactions.length} total.*\n`;
+  }
+
+  markdown += `
+## 📈 Financial Health Indicators
+
+- **Income/Expense Ratio:** ${totalExpenses > 0 ? (totalIncome / totalExpenses).toFixed(2) : 'N/A'}
+- **Average Transaction:** ${currencySymbol}${(transactions.reduce((sum, tx) => sum + Math.abs(tx.amount), 0) / transactions.length).toFixed(2)}
+- **Largest Income:** ${currencySymbol}${Math.max(...transactions.filter(tx => tx.amount > 0).map(tx => tx.amount), 0).toFixed(2)}
+- **Largest Expense:** ${currencySymbol}${Math.max(...transactions.filter(tx => tx.amount < 0).map(tx => Math.abs(tx.amount)), 0).toFixed(2)}
+
+---
+*Report generated by Purse CLI*
+`;
+
+  return markdown;
+}
+
+/**
  * Manages graph-related interactive operations.
  * @param {Config} config - The configuration object.
  * @returns {Promise<void>} Promise that resolves when graph management is complete.
@@ -241,10 +337,12 @@ async function manageGraphs(config: Config) {
       const { action } = await inquirer.prompt({
         type: 'list',
         name: 'action',
-        message: 'View Graphs:',
+        message: 'Reports & Analytics:',
         choices: [
           '📈 Balance Evolution',
           '📊 Category Distribution',
+          '📊 Category Bar Chart',
+          '📋 Export Financial Report (MD)',
           '↩️ Back to Main Menu',
         ],
       });
@@ -354,6 +452,79 @@ async function manageGraphs(config: Config) {
           console.log(`Net Amount: ${formatAmount(netAmount)}`);
           break;
 
+        case '📊 Category Bar Chart':
+          const barChartTransactions = getTransactions(dbPath);
+          
+          if (barChartTransactions.length === 0) {
+            console.log('No transactions found.');
+            break;
+          }
+
+          const barCategoryStats: { [key: string]: { total: number; count: number } } = {};
+          barChartTransactions.forEach(tx => {
+            const category = tx.category || 'Uncategorized';
+            if (!barCategoryStats[category]) {
+              barCategoryStats[category] = { total: 0, count: 0 };
+            }
+            barCategoryStats[category].total += Math.abs(tx.amount);
+            barCategoryStats[category].count += 1;
+          });
+
+          const barSortedCategories = Object.entries(barCategoryStats)
+            .sort(([,a], [,b]) => b.total - a.total);
+
+          console.log('\n📊 Category Bar Chart (by Total Amount)\n');
+
+          const maxBarCategoryLength = Math.max(...barSortedCategories.map(([cat]) => cat.length));
+          const maxBarAmount = Math.max(...barSortedCategories.map(([,stats]) => stats.total));
+
+          barSortedCategories.forEach(([category, stats]) => {
+            const percentage = maxBarAmount > 0 ? (stats.total / maxBarAmount * 100) : 0;
+            const barLength = Math.round(percentage / 2);
+            const bar = '█'.repeat(Math.max(1, barLength));
+            const amount = `${currencySymbol}${stats.total.toFixed(2)}`;
+            
+            console.log(`${category.padEnd(maxBarCategoryLength)} ${chalk.blue(bar.padEnd(50))} ${amount} (${stats.count} transactions)`);
+          });
+
+          const barTotalAmount = Object.values(barCategoryStats).reduce((sum, stat) => sum + stat.total, 0);
+          const barTotalTransactions = Object.values(barCategoryStats).reduce((sum, stat) => sum + stat.count, 0);
+
+          console.log(`\n📋 Bar Chart Summary:`);
+          console.log(`Total Categories: ${Object.keys(barCategoryStats).length}`);
+          console.log(`Total Amount: ${currencySymbol}${barTotalAmount.toFixed(2)}`);
+          console.log(`Total Transactions: ${barTotalTransactions}`);
+          break;
+
+        case '📋 Export Financial Report (MD)':
+          try {
+            const exportTransactions = getTransactions(dbPath);
+            
+            if (exportTransactions.length === 0) {
+              console.log(chalk.yellow('No transactions found to export.'));
+              break;
+            }
+
+            const reportDate = new Date().toISOString().split('T')[0];
+            const fileName = `financial-report-${reportDate}.md`;
+            
+            const { exportPath } = await inquirer.prompt({
+              type: 'input',
+              name: 'exportPath',
+              message: 'Enter export path (or press Enter for current directory):',
+              default: `./${fileName}`,
+            });
+
+            const fullPath = path.resolve(exportPath);
+            const reportContent = generateMarkdownReport(exportTransactions, config);
+            
+            fs.writeFileSync(fullPath, reportContent, 'utf8');
+            console.log(chalk.green(`✅ Financial report exported successfully to: ${fullPath}`));
+          } catch (error) {
+            console.log(chalk.red(`❌ Error exporting report: ${error instanceof Error ? error.message : 'Unknown error'}`));
+          }
+          break;
+
         case '↩️ Back to Main Menu':
           managingGraphs = false;
           break;
@@ -393,7 +564,7 @@ export function createInteractiveCommand(): Command {
                 '📝 Manage Transactions',
                 '💰 Manage Balance',
                 '📂 Manage Categories',
-                '📊 View Graphs',
+                '📊 Reports & Analytics',
                 '🚪 Exit',
               ],
             },
@@ -414,7 +585,7 @@ export function createInteractiveCommand(): Command {
                   const categoryChoices = [
                     '➕ Add Category',
                     new inquirer.Separator(),
-                    ...categories,
+                    ...(categories.length === 0 ? [chalk.gray('No categories yet. Add your first category!')] : categories),
                     new inquirer.Separator(),
                     '↩️ Back to Main Menu',
                   ];
@@ -510,7 +681,7 @@ export function createInteractiveCommand(): Command {
                 }
               }
               break;
-            case '📊 View Graphs':
+            case '📊 Reports & Analytics':
               await manageGraphs(config);
               break;
             case '🚪 Exit':

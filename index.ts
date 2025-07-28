@@ -9,7 +9,7 @@ const program = new Command();
 program
   .name('purse')
   .description('A simple CLI tool to track your finances.')
-  .version('0.0.2')
+  .version('0.1.0')
   .usage('[command] [options]')
   .option('-c, --config <path>', 'Path to the configuration file (default: ~/.purse.yml)');
 
@@ -18,6 +18,8 @@ program.on('--help', () => {
   console.log('Examples:');
   console.log('  $ purse add --amount 50 --description "Groceries"');
   console.log('  $ purse list');
+  console.log('  $ purse interactive           # Start interactive mode with Reports & Analytics');
+  console.log('  $ purse balance              # View current balance');
 });
 
 // Add all commands

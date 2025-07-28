@@ -30,12 +30,20 @@ export function createInteractiveCommand(): Command {
             type: 'list',
             name: 'action',
             message: 'What do you want to do?',
-            choices: ['Add Transaction', 'List Transactions', 'Check Balance', 'Edit Transaction', 'Delete Transaction', 'Manage Categories', 'Exit'],
+            choices: [
+              '➕ Add Transaction',
+              '📜 List Transactions',
+              '📊 Check Balance',
+              '✏️ Edit Transaction',
+              '🗑️ Delete Transaction',
+              '📂 Manage Categories',
+              '🚪 Exit',
+            ],
           },
         ]);
 
         switch (answers.action) {
-          case 'Add Transaction':
+          case '➕ Add Transaction':
             const addAnswers = await inquirer.prompt([
               {
                 type: 'input',
@@ -57,7 +65,7 @@ export function createInteractiveCommand(): Command {
             ]);
             addTransaction(dbPath, parseFloat(addAnswers.amount), addAnswers.description, addAnswers.category === 'Other' ? await inquirer.prompt({ type: 'input', name: 'newCategory', message: 'Enter new category:' }).then(a => a.newCategory) : addAnswers.category);
             break;
-          case 'List Transactions':
+          case '📜 List Transactions':
             const transactions = getTransactions(dbPath);
             if (transactions.length === 0) {
               console.log('No transactions found.');
@@ -70,11 +78,11 @@ export function createInteractiveCommand(): Command {
               });
             }
             break;
-          case 'Check Balance':
+          case '📊 Check Balance':
             const balance = getTransactions(dbPath).reduce((sum, tx) => sum + tx.amount, 0);
             console.log(`Current Balance: ${currencySymbol}${balance.toFixed(2)}`);
             break;
-          case 'Edit Transaction':
+          case '✏️ Edit Transaction':
             const transactionsToEdit = getTransactions(dbPath);
             if (transactionsToEdit.length === 0) {
               console.log('No transactions to edit.');
@@ -118,7 +126,7 @@ export function createInteractiveCommand(): Command {
               });
             }
             break;
-          case 'Delete Transaction':
+          case '🗑️ Delete Transaction':
             const transactionsToDelete = getTransactions(dbPath);
             if (transactionsToDelete.length === 0) {
               console.log('No transactions to delete.');
@@ -132,18 +140,18 @@ export function createInteractiveCommand(): Command {
             });
             deleteTransaction(dbPath, transactionIdToDelete);
             break;
-          case 'Manage Categories':
+          case '📂 Manage Categories':
             let managingCategories = true;
             while (managingCategories) {
               const categoryAnswers = await inquirer.prompt({
                 type: 'list',
                 name: 'categoryAction',
                 message: 'Category Management:',
-                choices: ['Add Category', 'Edit Category', 'Delete Category', 'Back to Main Menu'],
+                choices: ['➕ Add Category', '✏️ Edit Category', '🗑️ Delete Category', '↩️ Back to Main Menu'],
               });
 
               switch (categoryAnswers.categoryAction) {
-                case 'Add Category':
+                case '➕ Add Category':
                   const { newCategoryName } = await inquirer.prompt({
                     type: 'input',
                     name: 'newCategoryName',
@@ -159,7 +167,7 @@ export function createInteractiveCommand(): Command {
                     console.log(`Category '${newCategoryName}' already exists.`);
                   }
                   break;
-                case 'Edit Category':
+                case '✏️ Edit Category':
                   if (categories.length === 0) {
                     console.log('No categories to edit.');
                     break;
@@ -189,7 +197,7 @@ export function createInteractiveCommand(): Command {
                     }
                   }
                   break;
-                case 'Delete Category':
+                case '🗑️ Delete Category':
                   if (categories.length === 0) {
                     console.log('No categories to delete.');
                     break;
@@ -205,13 +213,13 @@ export function createInteractiveCommand(): Command {
                   saveConfig(config, configFilePath);
                   console.log(`Category '${categoryToDelete}' deleted.`);
                   break;
-                case 'Back to Main Menu':
+                case '↩️ Back to Main Menu':
                   managingCategories = false;
                   break;
               }
             }
             break;
-          case 'Exit':
+          case '🚪 Exit':
             console.log('Exiting interactive session.');
             running = false;
             break;

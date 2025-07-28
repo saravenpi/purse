@@ -1,35 +1,3 @@
 {
-  "transactions": [
-    {
-      "amount": 100,
-      "description": "Initial deposit",
-      "date": "2025-07-28T01:13:03.844Z"
-    },
-    {
-      "amount": 100,
-      "description": "Test Income",
-      "date": "2025-07-28T01:14:40.879Z"
-    },
-    {
-      "amount": 50,
-      "description": "Test Expense",
-      "date": "2025-07-28T01:14:40.942Z"
-    },
-    {
-      "amount": 100,
-      "description": "Test Income",
-      "date": "2025-07-28T01:15:07.338Z"
-    },
-    {
-      "amount": 50,
-      "description": "Test Expense",
-      "date": "2025-07-28T01:15:07.401Z"
-    },
-    {
-      "amount": 12,
-      "description": "Discord Nitro",
-      "date": "2025-07-28T01:34:50.219Z",
-      "category": "internet"
-    }
-  ]
+  "transactions": []
 }

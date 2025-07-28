@@ -1,15 +1,12 @@
 import { Command } from 'commander';
+import { addTransaction } from '../data';
 
-/**
- * Creates the 'add' command for adding new transactions.
- * @returns {Command} The Commander command object.
- */
 /**
  * Creates the 'add' command for adding new transactions.
  * @param {object} config - The configuration object.
  * @returns {Command} The Commander command object.
  */
-export function createAddCommand(config: object): Command {
+export function createAddCommand(config: any): Command {
   const addCommand = new Command();
 
   addCommand
@@ -18,9 +15,8 @@ export function createAddCommand(config: object): Command {
     .option('-a, --amount <amount>', 'The amount of the transaction')
     .option('-d, --description <description>', 'The description of the transaction')
     .action((options) => {
-      console.log('Adding a new transaction:');
-      console.log(`  Amount: ${options.amount}`);
-      console.log(`  Description: ${options.description}`);
+      const dbPath = config.database?.path || '~/.purse_data.json';
+      addTransaction(dbPath, parseFloat(options.amount), options.description);
     });
 
   return addCommand;
